@@ -3,6 +3,7 @@
 
 #include <elf.h>
 #include <string>
+#include "ElfCommon.h"
 
 class ElfModule {
 
@@ -27,29 +28,36 @@ public:
         this->spaceSize = spaceSize;
     }
 
+    ElfW(Addr) getElfExecLoadBias(const ElfW(Ehdr)* elf);
+
     unsigned elfHash(const char *name);
     void getElfBySectionView(void);
     bool getElfBySegmentView(void);
-    Elf32_Phdr* findSegmentByType(const Elf32_Word type);
-    Elf32_Shdr* findSectionByName(const char *sname);
-    void findSymByName(const char *symbol, Elf32_Sym **sym, int *symidx);
+    ElfW(Phdr)* findSegmentByType(const ElfW(Word) type);
+    ElfW(Shdr)* findSectionByName(const char *sname);
+    void findSymByName(const char *symbol, ElfW(Sym) **sym, int *symidx);
     template<class T>
-    void getElfSegmentInfo(const Elf32_Word type, Elf32_Phdr **ppPhdr, Elf32_Word *pSize, T *data);
+    void getElfSegmentInfo(const ElfW(Word) type, ElfW(Phdr) **ppPhdr, ElfW(Word) *pSize, T *data);
     template<class T>
     void getElfSectionInfo(const char *name, Elf32_Word *pSize, Elf32_Shdr **ppShdr, T *data);
     void dumpSections();
+    void dumpSections2();
     void dumpSegments();
     void dumpDynamics();
     void dumpSymbols();
     void dumpRelInfo();
 
+    const char* convertDynTagToName(int d_tag);
+    bool loadModuleFile(void);
+
 protected:
     bool        isExec;
     uint32_t    baseAddr;
+    uint32_t    biasAddr;
     int         spaceSize;
     bool        fromFile;
     std::string moduleName;
-
+    void*       fileBase;
 protected:
 
     Elf32_Ehdr  *ehdr;

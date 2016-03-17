@@ -7,9 +7,10 @@ int main(int argc, char* argv[])
 {
     printf("hello world\n");
     ElfHooker hooker;
+    hooker.testDlOpen();
     hooker.phraseProcMaps();
     hooker.dumpModuleList();
     hooker.hookAllModules();
-    hooker.testDlOpen();
+
     return 0;
 }

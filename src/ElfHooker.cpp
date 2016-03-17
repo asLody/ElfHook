@@ -14,7 +14,6 @@
 
 ElfHooker::ElfHooker()
 {
-
 }
 
 ElfHooker::~ElfHooker()
@@ -41,16 +40,14 @@ bool phraseProcBaseAddr(char* addr, void** pbase_addr, void** pend_addr)
 
 bool ElfHooker::phraseProcMaps()
 {
-    log_info("000000->\n");
     moduleList.clear();
-//    FILE* fd = fopen("./maps.txt", "r");
     FILE* fd = fopen("/proc/self/maps", "r");
     if (fd != NULL)
     {
         char buff[512];
         while(fgets(buff, sizeof(buff), fd) != NULL)
         {
-            const char *sep = "\t ";
+            const char *sep = "\t \r\n";
             char *line = NULL;
             char* addr = strtok_r(buff, sep, &line);
             if (!addr)
@@ -134,7 +131,6 @@ fail:
 	return res;
 }
 
-
 #define R_ARM_ABS32 0x02
 #define R_ARM_GLOB_DAT 0x15
 #define R_ARM_JUMP_SLOT 0x16
@@ -145,6 +141,7 @@ int ElfHooker::hook(ElfModule* module, const char *symbol, void *replace_func, v
 	assert(replace_func);
 	assert(symbol);
 
+//module->getElfBySectionView();
 	if (!module->getElfBySegmentView()) {
         return 0;
     }
@@ -212,9 +209,15 @@ void ElfHooker::hookAllModules()
                 itor != moduleList.end();
                 itor ++)
     {
-        log_info("Hook Module : %s", itor->getModuleName());
+        const char* moduleName = "/system/lib/libart.so";
+//        const char* moduleName = "/data/ElfHook";
+        if (strncmp(itor->getModuleName(), moduleName, strlen(moduleName)) != 0) {
+            continue;
+        }
+        log_info("Hook Module : %s\n", itor->getModuleName());
         this->hook(itor, "dlopen", (void*)nativehook_impl_dlopen, (void**)&old_dlopen);
         log_info("Old Func Addr:%p\n", old_dlopen);
+
     }
     return;
 }
@@ -223,8 +226,8 @@ void ElfHooker::hookAllModules()
 
 void ElfHooker::testDlOpen()
 {
-    void* h = dlopen("libjpeg.so", RTLD_LAZY);
-    void* f = dlsym(h,"jpeg_mem_src");
-    log_info("jpeg_mem_src : %p\n", f);
-    dlclose(h);
+    void* h = dlopen("libart.so", RTLD_LAZY);
+    void* f = dlsym(h,"_ZN3art9NanoSleepEy");
+    log_info("_ZN3art9NanoSleepEy : %p\n", f);
+    //dlclose(h);
 }

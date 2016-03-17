@@ -21,4 +21,7 @@
 #define log_fatal(...)  do{ fprintf(stdout, __VA_ARGS__); } while(0)
 #endif
 
+
+#define ElfW(type) Elf32_ ## type
+//#define ElfW(type) Elf64_ ## type
 #endif
