@@ -9,26 +9,41 @@
 #include "ElfModule.h"
 #include "ElfCommon.h"
 
-#define DT_GNU_HASH (0x6ffffef5)
+#define DT_GNU_HASH     ((int)0x6ffffef5)
+#define DT_GNU_RELDYN   ((int)0x6000000f)
+#define DT_GNU_RELDYNSZ ((int)0x60000010)
+
+//static const ElfW(Versym) kVersymNotNeeded = 0;
+//static const ElfW(Versym) kVersymGlobal    = 1;
 
 ElfModule::ElfModule(uint32_t baseAddr, const char* moduleName)
 {
     this->baseAddr   = baseAddr;
     this->moduleName = moduleName;
-    this->spaceSize  = 0;
-    this->fromFile   = false;
-    this->fileBase   = NULL;
+    this->biasAddr   = 0;
 
-    sym = NULL;
-    symstr = NULL;
+    this->ehdr = NULL;
+    this->phdr = NULL;
+    this->shdr = NULL;
 
+    this->dyn   = NULL;
+    this->dynsz = 0;
+
+    this->sym   = NULL;
+    this->symsz = 0;
+
+    this->relplt    = NULL;
+    this->relpltsz  = 0;
+    this->reldyn    = NULL;
+    this->reldynsz  = 0;
+
+    this->symstr    = NULL;
+    this->shstr     = NULL;
+    return;
 }
 
 ElfModule::~ElfModule()
 {
-    if (this->fileBase != NULL && this->spaceSize > 0) {
-        munmap(this->fileBase, this->spaceSize);
-    }
     return;
 }
 
@@ -46,65 +61,6 @@ ElfW(Addr) ElfModule::getElfExecLoadBias(const ElfW(Ehdr)* elf) {
   return 0;
 }
 
-void ElfModule::getElfBySectionView(void)
-{
-    uint32_t _baseAddr = (uint32_t)NULL;
-
-	this->ehdr = reinterpret_cast<Elf32_Ehdr *>(this->baseAddr);
-	this->shdr = reinterpret_cast<Elf32_Shdr *>(this->baseAddr + this->ehdr->e_shoff);
-	this->phdr = reinterpret_cast<Elf32_Phdr *>(this->baseAddr + this->ehdr->e_phoff);
-    if (this->ehdr->e_type == ET_EXEC) {
-        this->isExec = true;
-        log_error("[+] Executable File, ElfHook Process..\n");
-    } else if (this->ehdr->e_type == ET_DYN) {
-        this->isExec = false;
-        _baseAddr = this->baseAddr;
-        log_error("[+] Shared Object, ElfHook Process..\n");
-    } else {
-        log_error("[-] (%d) Elf object, NOT Need Process..\n", this->ehdr->e_type);
-        return ;//false;
-    }
-
-	Elf32_Shdr *shstr = (Elf32_Shdr *)(this->shdr + this->ehdr->e_shstrndx);
-	this->shstr = reinterpret_cast<char *>(0 + shstr->sh_offset);
-
-	getElfSectionInfo(".dynstr",  NULL,            NULL,      &this->symstr);
-	getElfSectionInfo(".dynamic", &this->dynsz,    NULL,      &this->dyn);
-	getElfSectionInfo(".dynsym",  &this->symsz,    NULL,      &this->sym);
-	getElfSectionInfo(".rel.dyn", &this->reldynsz, NULL,      &this->reldyn);
-	getElfSectionInfo(".rel.plt", &this->relpltsz, NULL,      &this->relplt);
-
-	Elf32_Shdr *hash = findSectionByName(".hash");
-	if(hash){
-		uint32_t *rawdata = reinterpret_cast<uint32_t *>(_baseAddr + hash->sh_offset);
-		this->nbucket = rawdata[0];
-		this->nchain  = rawdata[1];
-		this->bucket  = rawdata + 2;
-		this->chain = this->bucket + this->nbucket;
-	}
-}
-
-unsigned ElfModule::elfHash(const char *name) {
-	const unsigned char *tmp = (const unsigned char *) name;
-	unsigned h = 0, g;
-
-	while (*tmp) {
-		h = (h << 4) + *tmp++;
-		g = h & 0xf0000000;
-		h ^= g;
-		h ^= g >> 24;
-	}
-	return h;
-}
-
-uint32_t dl_new_hash (const char *s)
-{
-    uint32_t h = 5381;
-    for (unsigned char c = *s; c != '\0'; c = *++s)
-        h = h * 33 + c;
-    return h;
-}
-
 bool ElfModule::getElfBySegmentView(void)
 {
 	this->ehdr = reinterpret_cast<Elf32_Ehdr *>(this->baseAddr);
@@ -112,15 +68,12 @@ bool ElfModule::getElfBySegmentView(void)
 	this->phdr = reinterpret_cast<Elf32_Phdr *>(this->baseAddr + this->ehdr->e_phoff);
 
     this->biasAddr = this->getElfExecLoadBias(this->ehdr);
-    if (this->ehdr->e_type == ET_EXEC) {
-        this->isExec = true;
-        log_error("[+] Executable File, ElfHook Process..\n");
-    } else if (this->ehdr->e_type == ET_DYN) {
-        this->isExec = false;
-        log_error("[+] Shared Object, ElfHook Process..\n");
+    if (this->ehdr->e_type == ET_EXEC || this->ehdr->e_type == ET_DYN) {
+        log_error("[+] Executable File or Shared Object, ElfHook Process..\n");
     } else {
         log_error("[-] (%d) Elf object, NOT Need Process..\n", this->ehdr->e_type);
-        return false;
+        return false
+        ;
     }
 
 	this->shstr = NULL;
@@ -132,85 +85,87 @@ bool ElfModule::getElfBySegmentView(void)
 		log_error("[-] could't find PT_DYNAMIC segment\n");
 		return false;
 	}
-log_info("base:%p, dyn:%p\n",this->baseAddr, this->dyn);
 
+    this->is_gnu_hash = false;
 	this->dynsz = size / sizeof(Elf32_Dyn);
-this->dumpDynamics();
-
 	for(int i = 0; i < (int)this->dynsz; i += 1, dyn += 1)
     {
-//        log_info("d_tag: %08x\n", dyn->d_tag);
 		switch(dyn->d_tag)
         {
 		case DT_SYMTAB:
-			this->sym = reinterpret_cast<Elf32_Sym *>(this->biasAddr + dyn->d_un.d_ptr);
+			this->sym = reinterpret_cast<ElfW(Sym) *>(this->biasAddr + dyn->d_un.d_ptr);
 			break;
-
 		case DT_STRTAB:
 			this->symstr = reinterpret_cast<const char *>(this->biasAddr + dyn->d_un.d_ptr);
 			break;
-
 		case DT_REL:
-			this->reldyn = reinterpret_cast<Elf32_Rel *>(this->biasAddr + dyn->d_un.d_ptr);
+        case DT_GNU_RELDYN:
+			this->reldyn = reinterpret_cast<ElfW(Rel) *>(this->biasAddr + dyn->d_un.d_ptr);
 			break;
-
 		case DT_RELSZ:
-			this->reldynsz = dyn->d_un.d_val / sizeof(Elf32_Rel);
+        case DT_GNU_RELDYNSZ:
+			this->reldynsz = dyn->d_un.d_val / sizeof(ElfW(Rel));
 			break;
-
 		case DT_JMPREL:
-			this->relplt = reinterpret_cast<Elf32_Rel *>(this->biasAddr + dyn->d_un.d_ptr);
+			this->relplt = reinterpret_cast<ElfW(Rel) *>(this->biasAddr + dyn->d_un.d_ptr);
 			break;
-
 		case DT_PLTRELSZ:
-			this->relpltsz = dyn->d_un.d_val / sizeof(Elf32_Rel);
+			this->relpltsz = dyn->d_un.d_val / sizeof(ElfW(Rel));
 			break;
 		case DT_HASH:
-        {
-			uint32_t *rawdata = reinterpret_cast<uint32_t *>(this->biasAddr + dyn->d_un.d_ptr);
-			this->nbucket = rawdata[0];
-			this->nchain  = rawdata[1];
-			this->bucket  = rawdata + 2;
-			this->chain = this->bucket + this->nbucket;
-			this->symsz = this->nchain;
-            log_info("nbucket: %d, nchain: %d, bucket: %p, chain:%p\n", this->nbucket, this->nchain, this->bucket, this->chain);
+            {
+        		uint32_t *rawdata = reinterpret_cast<uint32_t *>(this->biasAddr + dyn->d_un.d_ptr);
+        		this->nbucket = rawdata[0];
+        		this->nchain  = rawdata[1];
+        		this->bucket  = rawdata + 2;
+        		this->chain   = this->bucket + this->nbucket;
+        		this->symsz   = this->nchain;
+                log_info("nbucket: %d, nchain: %d, bucket: %p, chain:%p\n", this->nbucket, this->nchain, this->bucket, this->chain);
+        		break;
+            }
+        case DT_GNU_HASH:
+            {
+                uint32_t *rawdata = reinterpret_cast<uint32_t *>(this->biasAddr + dyn->d_un.d_ptr);
+                this->gnu_nbucket      = rawdata[0];
+                this->gnu_symndx       = rawdata[1];
+                this->gnu_maskwords    = rawdata[2];
+                this->gnu_shift2       = rawdata[3];
+                this->gnu_bloom_filter = rawdata + 4;
+                this->gnu_bucket       = reinterpret_cast<uint32_t*>(this->gnu_bloom_filter + this->gnu_maskwords);
+                this->gnu_chain        = this->gnu_bucket + this->gnu_nbucket - this->gnu_symndx;
 
-			break;
-        }
-        case (int)DT_GNU_HASH:
-        {
-            uint32_t *rawdata = reinterpret_cast<uint32_t *>(this->biasAddr + dyn->d_un.d_ptr);
-            log_info("base:%p, ptr:%p, rawdata:%p\n", this->biasAddr, dyn->d_un.d_ptr, rawdata);
-            log_info("%08x, %08x, %08x, %08x\n", rawdata[0], rawdata[1], rawdata[2], rawdata[3]);
-            break;
-        }
+
+                if (!powerof2(this->gnu_maskwords)) {
+                    log_error("[-] invalid maskwords for gnu_hash = 0x%x, in \"%s\" expecting power to two",
+                            this->gnu_maskwords, getModuleName());
+                    return false;
+                }
+                this->gnu_maskwords -= 1;
+                is_gnu_hash = true;
+
+                log_info("bbucket(%d), symndx(%d), maskworks(%d), shift2(%d)\n",
+                        this->gnu_nbucket,   this->gnu_symndx,
+                        this->gnu_maskwords, this->gnu_shift2);
+                break;
+            }
 		}
 	}
-    if (this->sym != NULL && this->symstr != NULL) {
-        log_info("sym:%p, symstr:%p\n", this->sym, this->symstr);
-        log_info("%s\n%s\n%s\n",
-                            sym[0].st_name + this->symstr,
-                            sym[1].st_name + this->symstr,
-                            sym[10].st_name + this->symstr);
-    }
+
+    this->dumpSymbols();
     return true;
 }
 
+
+
 #define SAFE_SET_VALUE(t, v) if(t) *(t) = (v)
-
-
 template<class T>
 void ElfModule::getElfSectionInfo(const char *name, Elf32_Word *pSize, Elf32_Shdr **ppShdr, T *data)
 {
 	Elf32_Shdr *_shdr = findSectionByName(name);
-    uint32_t _baseAddr = (uint32_t)NULL;
-    if (!this->isExec) {
-        _baseAddr = this->baseAddr;
-    }
 
 	if(_shdr){
 		SAFE_SET_VALUE(pSize, _shdr->sh_size / _shdr->sh_entsize);
-		SAFE_SET_VALUE(data, reinterpret_cast<T>(_baseAddr + _shdr->sh_offset));
+		SAFE_SET_VALUE(data, reinterpret_cast<T>(this->biasAddr + _shdr->sh_offset));
 	}else{
 		log_error("[-] Could not found section %s\n", name);
 		exit(-1);
@@ -245,17 +200,17 @@ ElfW(Shdr)* ElfModule::findSectionByName(const char *sname)
 		const char *name = (const char *)(shdr[i].sh_name + this->shstr);
 		if(!strncmp(name, sname, strlen(sname)))
         {
-			target = (Elf32_Shdr *)(shdr + i);
+			target = (ElfW(Shdr)*)(shdr + i);
 			break;
 		}
 	}
 	return target;
 }
 
-Elf32_Phdr *ElfModule::findSegmentByType(const Elf32_Word type)
+ElfW(Phdr) *ElfModule::findSegmentByType(const ElfW(Word) type)
 {
-	Elf32_Phdr *target = NULL;
-	Elf32_Phdr *phdr = this->phdr;
+	ElfW(Phdr) *target = NULL;
+	ElfW(Phdr) *phdr = this->phdr;
 
 	for(int i = 0; i < this->ehdr->e_phnum; i += 1)
     {
@@ -265,59 +220,149 @@ Elf32_Phdr *ElfModule::findSegmentByType(const Elf32_Word type)
 			break;
 		}
 	}
-//log_info("phdr: %p, type:%d, target:%p \n", phdr, type, target);
 	return target;
 }
 
 
-void ElfModule::findSymByName(const char *symbol, ElfW(Sym) **sym, int *symidx) {
-	ElfW(Sym) *target = NULL;
 
-	unsigned hash = elfHash(symbol);
-	uint32_t index = this->bucket[hash % this->nbucket];
+uint32_t ElfModule::elfHash(const char *name) {
+	const unsigned char *tmp = (const unsigned char *) name;
+	unsigned h = 0, g;
 
-	if (!strcmp(this->symstr + this->sym[index].st_name, symbol)) {
-		target = this->sym + index;
+	while (*tmp) {
+		h = (h << 4) + *tmp++;
+		g = h & 0xf0000000;
+		h ^= g;
+		h ^= g >> 24;
 	}
- 	if (!target) {
-		do {
-			index = this->chain[index];
-			if (!strcmp(this->symstr + this->sym[index].st_name, symbol)) {
-				target = this->sym + index;
-				break;
-			}
-		} while (index != 0);
-	}
-	if(target){
-		SAFE_SET_VALUE(sym, target);
-		SAFE_SET_VALUE(symidx, index);
-	}
-    return;
+	return h;
 }
 
-bool ElfModule::loadModuleFile() {
-    if (this->fileBase == NULL) {
-    	int fd = open(this->getModuleName(), O_RDONLY);
-    	if (fd < 0) {
-    		log_error("[-] open (%s) fails. error: %s\n",
-                        this->getModuleName(),
-                        strerror(errno));
-    		return false;
-    	}
+uint32_t ElfModule::gnuHash (const char *s)
+{
+    uint32_t h = 5381;
+    for (unsigned char c = *s; c != '\0'; c = *++s)
+        h = h * 33 + c;
+    return h;
+}
 
-    	struct stat fs;
-    	fstat(fd, &fs);
+bool ElfModule::elfLookup(char const* symbol, ElfW(Sym) **sym, int *symidx) {
+    ElfW(Sym) *target = NULL;
 
-    	this->fileBase = mmap(NULL, fs.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-    	if (this->fileBase == MAP_FAILED) {
-    		log_error("[-] mmap fails.\n");
-            close(fd);
-    		return false;
-    	}
-    	close(fd);
-    	this->spaceSize = fs.st_size;
+    uint32_t hash = elfHash(symbol);
+    uint32_t index = this->bucket[hash % this->nbucket];
+
+    if (!strcmp(this->symstr + this->sym[index].st_name, symbol)) {
+        target = this->sym + index;
     }
-    return true;
+    if (!target) {
+        do {
+            index = this->chain[index];
+            if (!strcmp(this->symstr + this->sym[index].st_name, symbol)) {
+                target = this->sym + index;
+                break;
+            }
+        } while (index != 0);
+    }
+    if(target){
+        SAFE_SET_VALUE(sym, target);
+        SAFE_SET_VALUE(symidx, index);
+        return true;
+    }
+    return false
+    ;
+}
+
+bool ElfModule::gnuLookup(char const* symbol, ElfW(Sym) **sym, int *symidx)
+{
+    uint32_t hash = this->gnuHash(symbol);
+    uint32_t h2 = hash >> this->gnu_shift2;
+
+    uint32_t bloom_mask_bits = sizeof(ElfW(Addr))*8;
+    uint32_t word_num = (hash / bloom_mask_bits) & this->gnu_maskwords;
+    ElfW(Addr) bloom_word = this->gnu_bloom_filter[word_num];
+
+    *sym = NULL;
+    *symidx = 0;
+
+    log_info("[+] Search %s in %s@%p (gnu)\n",
+                symbol,
+                this->getModuleName(),
+                reinterpret_cast<void*>(this->baseAddr));
+
+    log_info("word_num(%d), bloom_word(%x), hash(%08x), h2(%x), bloom_mask_bits(%x)\n", word_num, bloom_word, hash, h2, bloom_mask_bits);
+    log_info("%x; %x, %x, %x\n",  (hash % bloom_mask_bits) ,
+                        (bloom_word >> (hash % bloom_mask_bits)),
+                        (h2 % bloom_mask_bits),
+                        (bloom_word >> (h2 % bloom_mask_bits)));
+    // test against bloom filter
+    if ((1 & (bloom_word >> (hash % bloom_mask_bits)) & (bloom_word >> (h2 % bloom_mask_bits))) == 0) {
+        log_warn("[-] NOT Found %s in %s@%p 1\n",
+                    symbol,
+                    this->getModuleName(),
+                    reinterpret_cast<void*>(this->baseAddr));
+
+        return false;
+    }
+
+    // bloom test says "probably yes"...
+    uint32_t n = this->gnu_bucket[hash % this->gnu_nbucket];
+
+    if (n == 0) {
+        log_warn("[-] NOT Found %s in %s@%p 2\n",
+            symbol,
+            this->getModuleName(),
+            reinterpret_cast<void*>(this->baseAddr));
+
+        return false;
+    }
+
+    do {
+        ElfW(Sym)* s = this->sym + n;
+        if (((this->gnu_chain[n] ^ hash) >> 1) == 0 &&
+                    strcmp((this->symstr + s->st_name), symbol) == 0) {
+            log_info("[+] Found %s in %s (%p) %zd\n",
+                            symbol,
+                            this->getModuleName(),
+                            reinterpret_cast<void*>(s->st_value),
+                            static_cast<size_t>(s->st_size));
+            *symidx = n;
+            *sym = s;
+            return true;
+        }
+        log_dbg("test : %s\n", (this->symstr + s->st_name));
+    } while ((this->gnu_chain[n++] & 1) == 0);
+
+    log_warn("[-] NOT Found %s in %s@%p 3\n",
+              symbol,
+              this->getModuleName(),
+              reinterpret_cast<void*>(this->baseAddr));
+
+    return false;
+}
+
+bool ElfModule::findSymByName(const char *symbol, ElfW(Sym) **sym, int *symidx) {
+    if (this->is_gnu_hash) {
+        bool result = gnuLookup(symbol, sym, symidx);
+        if (!result) {
+            for(int i = 0; i < (int)this->gnu_symndx; i++) {
+                char const* symName = reinterpret_cast<char const *>(this->sym[i].st_name + this->symstr);
+                if (strcmp(symName, symbol) == 0) {
+                    // found symbol
+                    *symidx = i;
+                    *sym = this->sym + i;
+                    result = true;
+                    log_info("[+] Found %s in %s (%p) %zd\n",
+                                    symbol,
+                                    this->getModuleName(),
+                                    reinterpret_cast<void*>((*sym)->st_value),
+                                    static_cast<size_t>((*sym)->st_size));
+                }
+            }
+        }
+        return result;
+    }
+    return elfLookup(symbol, sym, symidx);
 }
 
 void ElfModule::dumpSections(void){
@@ -334,8 +379,8 @@ void ElfModule::dumpSections(void){
 }
 
 void ElfModule::dumpSections2() {
-    Elf32_Half shnum = this->ehdr->e_shnum;
-    Elf32_Shdr *shdr = this->shdr;
+    ElfW(Half) shnum = this->ehdr->e_shnum;
+    ElfW(Shdr) *shdr = this->shdr;
 
     log_info("Sections: :%d\n",shnum);
     for(int i = 0; i < shnum; i += 1, shdr += 1) {
@@ -347,11 +392,11 @@ void ElfModule::dumpSections2() {
 
 void ElfModule::dumpSegments(void)
 {
-	Elf32_Phdr *phdr = this->phdr;
-	Elf32_Half phnum = this->ehdr->e_phnum;
+	ElfW(Phdr) *phdr = this->phdr;
+	ElfW(Half) phnum = this->ehdr->e_phnum;
 
 	log_info("Segments: \n");
-	for(int i=0; i<phnum; i++){
+	for(int i = 0; i < phnum; i++){
         log_info("[%.2d] %-.8x 0x%-.8x 0x%-.8x %-8d %-8d\n", i,
 		 		phdr[i].p_type, phdr[i].p_vaddr,
 		 		phdr[i].p_paddr, phdr[i].p_filesz,
@@ -399,12 +444,12 @@ const char* ElfModule::convertDynTagToName(int d_tag)
             return sDynNameMaps[i].dyn_name;
         }
     }
-    return "Unknow";
+    return "UNKNOW";
 }
 
 void ElfModule::dumpDynamics(void)
 {
-	Elf32_Dyn *dyn = this->dyn;
+	ElfW(Dyn) *dyn = this->dyn;
 
 	log_info(".dynamic section info:\n");
 	const char *type = NULL;
@@ -422,27 +467,33 @@ void ElfModule::dumpDynamics(void)
 
 void ElfModule::dumpSymbols(void)
 {
-	Elf32_Sym *sym = this->sym;
+	ElfW(Sym) *sym = this->sym;
 
-	log_info("dynsym section info:\n");
-	for(int i=0; i< (int)this->symsz; i++)
-    {
-		log_info("[%2d] %-20s\n", i, sym[i].st_name + this->symstr);
-	}
+	log_info("dynsym section info: \n");
+    if (this->is_gnu_hash) {
+
+    } else {
+        for(int i=0; i< (int)this->symsz; i++)
+        {
+    		log_info("[%2d] %-20s\n", i, sym[i].st_name + this->symstr);
+    	}
+    }
+
+    return;
 }
 
 
 void ElfModule::dumpRelInfo(void){
-	Elf32_Rel* rels[] = {this->reldyn, this->relplt};
-	Elf32_Word resszs[] = {this->reldynsz, this->relpltsz};
+	ElfW(Rel)* rels[] = {this->reldyn, this->relplt};
+	ElfW(Word) resszs[] = {this->reldynsz, this->relpltsz};
 
-	Elf32_Sym *sym = this->sym;
+	ElfW(Sym) *sym = this->sym;
 
 	log_info("rel section info:\n");
 	for(int i = 0; i < (int)(sizeof(rels)/sizeof(rels[0])); i++)
     {
-		Elf32_Rel *rel = rels[i];
-		Elf32_Word relsz = resszs[i];
+		ElfW(Rel) *rel = rels[i];
+		ElfW(Word) relsz = resszs[i];
 
 		for(int j = 0; j < (int)
         relsz; j += 1)
@@ -451,4 +502,41 @@ void ElfModule::dumpRelInfo(void){
             log_info("[%.2d-%.4d] 0x%-.8x 0x%-.8x %-10s\n", i, j, rel[j].r_offset, rel[j].r_info, name);
 		}
 	}
+    return;
 }
+
+
+/*
+
+void ElfModule::getElfBySectionView(void)
+{
+	this->ehdr = reinterpret_cast<Elf32_Ehdr *>(this->baseAddr);
+	this->shdr = reinterpret_cast<Elf32_Shdr *>(this->baseAddr + this->ehdr->e_shoff);
+	this->phdr = reinterpret_cast<Elf32_Phdr *>(this->baseAddr + this->ehdr->e_phoff);
+
+    if (this->ehdr->e_type == ET_EXEC || this->ehdr->e_type == ET_DYN) {
+        log_error("[+] Executable File or Shared Object, ElfHook Process..\n");
+    } else {
+        log_error("[-] (%d) Elf object, NOT Need Process..\n", this->ehdr->e_type);
+        return;
+    }
+
+	Elf32_Shdr *shstr = (Elf32_Shdr *)(this->shdr + this->ehdr->e_shstrndx);
+	this->shstr = reinterpret_cast<char *>(0 + shstr->sh_offset);
+
+	getElfSectionInfo(".dynstr",  NULL,            NULL,      &this->symstr);
+	getElfSectionInfo(".dynamic", &this->dynsz,    NULL,      &this->dyn);
+	getElfSectionInfo(".dynsym",  &this->symsz,    NULL,      &this->sym);
+	getElfSectionInfo(".rel.dyn", &this->reldynsz, NULL,      &this->reldyn);
+	getElfSectionInfo(".rel.plt", &this->relpltsz, NULL,      &this->relplt);
+
+	Elf32_Shdr *hash = findSectionByName(".hash");
+	if(hash){
+		uint32_t *rawdata = reinterpret_cast<uint32_t *>(_baseAddr + hash->sh_offset);
+		this->nbucket = rawdata[0];
+		this->nchain  = rawdata[1];
+		this->bucket  = rawdata + 2;
+		this->chain = this->bucket + this->nbucket;
+	}
+}
+*/

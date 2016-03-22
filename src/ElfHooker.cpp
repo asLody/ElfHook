@@ -70,6 +70,7 @@ bool ElfHooker::phraseProcMaps()
                 ElfModule module((uint32_t)baseAddr, moduleName);
                 moduleList.push_back(module);
             }
+            //if (strstr())
         }
         return 0;
     }
@@ -148,7 +149,7 @@ int ElfHooker::hook(ElfModule* module, const char *symbol, void *replace_func, v
 	Elf32_Sym *sym = NULL;
 	int symidx = 0;
     uint32_t _baseAddr = (uint32_t)NULL;
-
+log_info("findSymByName -- > 0 \n");
 	module->findSymByName(symbol, &sym, &symidx);
 
 	if(!sym){
@@ -158,11 +159,9 @@ int ElfHooker::hook(ElfModule* module, const char *symbol, void *replace_func, v
 		log_info("[+] sym %p, symidx %d.\n", sym, symidx);
 	}
 
-
-    if (!module->isExec) {
-        _baseAddr = module->baseAddr;
-    }
-	for (uint32_t i = 0; i < module->relpltsz; i++) {
+    _baseAddr = module->getBiasAddr();
+log_info("findSymByName -- > 1 \n");
+    for (uint32_t i = 0; i < module->relpltsz; i++) {
 		Elf32_Rel& rel = module->relplt[i];
 		if (ELF32_R_SYM(rel.r_info) == symidx && ELF32_R_TYPE(rel.r_info) == R_ARM_JUMP_SLOT) {
 
@@ -173,7 +172,7 @@ int ElfHooker::hook(ElfModule* module, const char *symbol, void *replace_func, v
 			break;
 		}
 	}
-
+log_info("findSymByName -- > 2 \n");
 	for (uint32_t i = 0; i < module->reldynsz; i++) {
 		Elf32_Rel& rel = module->reldyn[i];
 		if (ELF32_R_SYM(rel.r_info) == symidx &&
@@ -216,6 +215,7 @@ void ElfHooker::hookAllModules()
         }
         log_info("Hook Module : %s\n", itor->getModuleName());
         this->hook(itor, "dlopen", (void*)nativehook_impl_dlopen, (void**)&old_dlopen);
+//        this->hook(itor, "artAllocObjectFromCodeResolvedRegion", (void*)nativehook_impl_dlopen, (void**)&old_dlopen);
         log_info("Old Func Addr:%p\n", old_dlopen);
 
     }
@@ -227,7 +227,8 @@ void ElfHooker::hookAllModules()
 void ElfHooker::testDlOpen()
 {
     void* h = dlopen("libart.so", RTLD_LAZY);
-    void* f = dlsym(h,"_ZN3art9NanoSleepEy");
-    log_info("_ZN3art9NanoSleepEy : %p\n", f);
+
+    void* f = dlsym(h,"artAllocObjectFromCodeResolvedRegion");
+    log_info("artAllocObjectFromCodeResolvedRegion : %p\n", f);
     //dlclose(h);
 }

@@ -24,4 +24,7 @@
 
 #define ElfW(type) Elf32_ ## type
 //#define ElfW(type) Elf64_ ## type
+
+#define powerof2(x)     ((((x)-1)&(x))==0)
+
 #endif
