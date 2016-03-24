@@ -1,6 +1,6 @@
-## ElfHook
+## 0x01 Brief About ElfHook
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;这份ElfHook的代码参考boyliang的AllHookInOne, 修复AllHookInOne的
+&emsp;&emsp;这份ElfHook的代码参考boyliang的AllHookInOne, 修复AllHookInOne的
 ElfHook中的一些问题，同时也解决我们项目中遇到的一些问题。
 
 - .dynmaic中不使用DT_HAST，而是使用.gun.hash。
@@ -16,8 +16,27 @@ ElfHook中的一些问题，同时也解决我们项目中遇到的一些问题�
 
 ref:
 
-&nbsp;&nbsp;AllHookInOne : [https://github.com/boyliang/AllHookInOne.git]
+&emsp;AllHookInOne : [https://github.com/boyliang/AllHookInOne.git]
 
-&nbsp;&nbsp;AllHookInOne说明 :[http://bbs.pediy.com/showthread.php?p=1328038]
+&emsp;AllHookInOne说明 : [http://bbs.pediy.com/showthread.php?p=1328038]
 
-&nbsp;&nbsp;bionic : [https://android.googlesource.com/platform/bionic]
+&emsp;bionic : [https://android.googlesource.com/platform/bionic]
+
+
+## 0x02 How To Make
+
+#### Export android ndk path
+
+> export -p PATH=$PATH:$ANDROID_NDK/toolchains/arm-linux-androideabi-4.6/prebuilt/darwin-x86_64/bin
+
+#### Build executable run in "adb shell", output file is "./bin/ElfHook"
+
+> make
+
+> make clean
+
+#### Build jni library, output file is "./bin/armeabi/libElfHook.so"
+
+> make jni
+
+> make jni-clean

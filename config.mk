@@ -1,6 +1,7 @@
 
 
-######### ���鰲װ·��  ##########
+######### 安装路径 ##########
+
 ifndef PREFIX
 PREFIX        = /usr
 endif
@@ -20,10 +21,9 @@ RANLIB       = $(CROSS_PREFIX)ranlib
 STRIP        =	$(CROSS_PREFIX)strip
 CFLAGS       += -fPIE -Wall --sysroot=$(SYSROOT) -DELFHOOK_STANDALONE=1
 CFLAGS       += -I$(STL_PORT)/stlport
-LDFLAGS	     += --sysroot=$(SYSROOT)
+LDFLAGS      += --sysroot=$(SYSROOT)
 LDFLAGS      += $(STL_PORT)/libs/armeabi-v7a/libstlport_static.a
 LDFLAGS      += -fPIE -pie -lstdc++
 JNIFLAGS     = APP_BUILD_SCRIPT=./Android.mk
-JNIFLAGS	 += APP_PLATFORM=android-19 APP_STL=stlport_static
-#JNIFLAGS	 += =$(PWD)/../TestHook/app/src/main/jniLibs
+JNIFLAGS     += APP_PLATFORM=android-19 APP_STL=stlport_static
 EXTRA_OBJS   +=
