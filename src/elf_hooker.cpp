@@ -63,12 +63,12 @@ bool elf_hooker::phrase_proc_maps()
             strtok_r(NULL, sep, &line);  // dev
             strtok_r(NULL, sep, &line);  // node
 
-            char* moduleName = strtok_r(NULL, sep, &line); //module name
-            void* baseAddr = NULL;
-            void* endAddr = NULL;
-            if (phrase_proc_base_addr(addr, &baseAddr, &endAddr))
+            char* module_name = strtok_r(NULL, sep, &line); //module name
+            void* base_addr = NULL;
+            void* end_addr = NULL;
+            if (phrase_proc_base_addr(addr, &base_addr, &end_addr))
             {
-                elf_module module((uint32_t)baseAddr, moduleName);
+                elf_module module((uint32_t)base_addr, module_name);
                 m_module_list.push_back(module);
             }
             //if (strstr())
@@ -89,15 +89,7 @@ void elf_hooker::dump_module_list()
     }
 }
 
-void* (*old_dlopen)(const char* filename, int flag);
 
-extern "C"
-void* nativehook_impl_dlopen(const char* filename, int flag)
-{
-    log_info("nativehook_impl_dlopen ->\n");
-    void* res = old_dlopen(filename, flag);
-    return res;
-}
 
 void elf_hooker::hook_all_modules(const char* func_name, void* pfn_new, void** ppfn_old)
 {
@@ -121,16 +113,7 @@ void elf_hooker::hook_all_modules(const char* func_name, void* pfn_new, void** p
 
 
 
-// #include <dlfcn.h>
-//
-// void elf_hooker::testDLOpen()
-// {
-//
-//     void* h = dlopen("libart.so", RTLD_LAZY);
-//     void* f = dlsym(h,"artAllocObjectFromCodeResolvedRegion");
-//     log_info("artAllocObjectFromCodeResolvedRegion : %p\n", f);
-//     //dlclose(h);
-// }
+
 
 //        this->hook(itor, "dlopen", (void*)nativehook_impl_dlopen, (void**)&old_dlopen);
 //        this->hook(itor, "artAllocObjectFromCodeResolvedRegion", (void*)nativehook_impl_dlopen, (void**)&old_dlopen);

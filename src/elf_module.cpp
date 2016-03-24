@@ -174,8 +174,6 @@ bool elf_module::get_segment_view(void)
     return true;
 }
 
-
-
 #define SAFE_SET_VALUE(t, v) if(t) *(t) = (v)
 template<class T>
 void elf_module::get_section_info(const char *name, Elf32_Word *pSize, Elf32_Shdr **ppShdr, T *data)
@@ -192,7 +190,6 @@ void elf_module::get_section_info(const char *name, Elf32_Word *pSize, Elf32_Shd
 
 	SAFE_SET_VALUE(ppShdr, _shdr);
 }
-
 
 template<class T>
 void elf_module::get_segment_info(const ElfW(Word) type, ElfW(Phdr) **ppPhdr, ElfW(Word) *pSize, T *data)
@@ -241,7 +238,8 @@ ElfW(Phdr) *elf_module::find_segment_by_type(const ElfW(Word) type)
 	return target;
 }
 
-uint32_t elf_module::elf_hash(const char *name) {
+uint32_t elf_module::elf_hash(const char *name)
+{
 	const unsigned char *tmp = (const unsigned char *) name;
 	uint32_t h = 0, g;
 	while (*tmp) {
@@ -263,7 +261,8 @@ uint32_t elf_module::gnu_hash (const char *s)
     return h;
 }
 
-bool elf_module::elf_lookup(char const* symbol, ElfW(Sym) **sym, int *symidx) {
+bool elf_module::elf_lookup(char const* symbol, ElfW(Sym) **sym, int *symidx)
+{
     ElfW(Sym) *target = NULL;
 
     uint32_t hash = elf_hash(symbol);
