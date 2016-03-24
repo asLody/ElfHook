@@ -14,6 +14,7 @@
 
 elf_hooker::elf_hooker()
 {
+    
 }
 
 elf_hooker::~elf_hooker()

@@ -73,9 +73,9 @@ ElfW(Addr) elf_module::caculate_bias_addr(const ElfW(Ehdr)* elf)
 
 bool elf_module::get_segment_view(void)
 {
-	this->m_ehdr = reinterpret_cast<Elf32_Ehdr *>(this->get_base_addr());
-	this->m_shdr = reinterpret_cast<Elf32_Shdr *>(this->get_base_addr() + this->m_ehdr->e_shoff);
-	this->m_phdr = reinterpret_cast<Elf32_Phdr *>(this->get_base_addr() + this->m_ehdr->e_phoff);
+    this->m_ehdr = reinterpret_cast<Elf32_Ehdr *>(this->get_base_addr());
+    this->m_shdr = reinterpret_cast<Elf32_Shdr *>(this->get_base_addr() + this->m_ehdr->e_shoff);
+    this->m_phdr = reinterpret_cast<Elf32_Phdr *>(this->get_base_addr() + this->m_ehdr->e_phoff);
 
     if (!this->m_bias_addr)
     {
@@ -92,54 +92,54 @@ bool elf_module::get_segment_view(void)
         return false;
     }
 
-	this->m_shstr_ptr = NULL;
+    this->m_shstr_ptr = NULL;
 
-	ElfW(Phdr) *dynamic = NULL;
-	ElfW(Word) size = 0;
-	this->get_segment_info(PT_DYNAMIC, &dynamic, &size, &this->m_dyn_ptr);
-	if(!dynamic)
+    ElfW(Phdr) *dynamic = NULL;
+    ElfW(Word) size = 0;
+    this->get_segment_info(PT_DYNAMIC, &dynamic, &size, &this->m_dyn_ptr);
+    if(!dynamic)
     {
-		log_error("[-] could't find PT_DYNAMIC segment\n");
-		return false;
-	}
+        log_error("[-] could't find PT_DYNAMIC segment\n");
+        return false;
+    }
 
     ElfW(Dyn) *dyn = this->m_dyn_ptr;
     this->set_is_gnu_has(false);
-	this->m_dyn_size = size / sizeof(Elf32_Dyn);
-	for(int i = 0; i < (int)this->m_dyn_size; i += 1, dyn += 1)
+    this->m_dyn_size = size / sizeof(Elf32_Dyn);
+    for(int i = 0; i < (int)this->m_dyn_size; i += 1, dyn += 1)
     {
-		switch(dyn->d_tag)
+        switch(dyn->d_tag)
         {
-		case DT_SYMTAB:
-			this->m_sym_ptr = reinterpret_cast<ElfW(Sym) *>(this->get_bias_addr() + dyn->d_un.d_ptr);
-			break;
-		case DT_STRTAB:
-			this->m_symstr_ptr = reinterpret_cast<const char *>(this->get_bias_addr() + dyn->d_un.d_ptr);
-			break;
-		case DT_REL:
+        case DT_SYMTAB:
+            this->m_sym_ptr = reinterpret_cast<ElfW(Sym) *>(this->get_bias_addr() + dyn->d_un.d_ptr);
+            break;
+        case DT_STRTAB:
+            this->m_symstr_ptr = reinterpret_cast<const char *>(this->get_bias_addr() + dyn->d_un.d_ptr);
+            break;
+        case DT_REL:
         case DT_ANDROID_REL:
-			this->m_reldyn_ptr = reinterpret_cast<ElfW(Rel) *>(this->get_bias_addr() + dyn->d_un.d_ptr);
-			break;
-		case DT_RELSZ:
+            this->m_reldyn_ptr = reinterpret_cast<ElfW(Rel) *>(this->get_bias_addr() + dyn->d_un.d_ptr);
+            break;
+        case DT_RELSZ:
         case DT_ANDROID_RELSZ:
-			this->m_reldyn_size = dyn->d_un.d_val / sizeof(ElfW(Rel));
-			break;
-		case DT_JMPREL:
-			this->m_relplt_ptr = reinterpret_cast<ElfW(Rel) *>(this->get_bias_addr() + dyn->d_un.d_ptr);
-			break;
-		case DT_PLTRELSZ:
-			this->m_relplt_size = dyn->d_un.d_val / sizeof(ElfW(Rel));
-			break;
-		case DT_HASH:
+            this->m_reldyn_size = dyn->d_un.d_val / sizeof(ElfW(Rel));
+            break;
+        case DT_JMPREL:
+            this->m_relplt_ptr = reinterpret_cast<ElfW(Rel) *>(this->get_bias_addr() + dyn->d_un.d_ptr);
+            break;
+        case DT_PLTRELSZ:
+            this->m_relplt_size = dyn->d_un.d_val / sizeof(ElfW(Rel));
+            break;
+        case DT_HASH:
             {
-        		uint32_t *rawdata = reinterpret_cast<uint32_t *>(this->get_bias_addr() + dyn->d_un.d_ptr);
-        		this->m_nbucket = rawdata[0];
-        		this->m_nchain  = rawdata[1];
-        		this->m_bucket  = rawdata + 2;
-        		this->m_chain   = this->m_bucket + this->m_nbucket;
-        		this->m_sym_size   = this->m_nchain;
+                uint32_t *rawdata = reinterpret_cast<uint32_t *>(this->get_bias_addr() + dyn->d_un.d_ptr);
+                this->m_nbucket = rawdata[0];
+                this->m_nchain  = rawdata[1];
+                this->m_bucket  = rawdata + 2;
+                this->m_chain   = this->m_bucket + this->m_nbucket;
+                this->m_sym_size   = this->m_nchain;
                 log_info("nbucket: %d, nchain: %d, bucket: %p, chain:%p\n", this->m_nbucket, this->m_nchain, this->m_bucket, this->m_chain);
-        		break;
+                break;
             }
         case DT_GNU_HASH:
             {
@@ -167,8 +167,8 @@ bool elf_module::get_segment_view(void)
                         this->m_gnu_maskwords, this->m_gnu_shift2);
                 break;
             }
-		}
-	}
+        }
+    }
 
     this->dump_symbols();
     return true;
@@ -178,77 +178,77 @@ bool elf_module::get_segment_view(void)
 template<class T>
 void elf_module::get_section_info(const char *name, Elf32_Word *pSize, Elf32_Shdr **ppShdr, T *data)
 {
-	Elf32_Shdr *_shdr = this->find_section_by_name(name);
+    Elf32_Shdr *_shdr = this->find_section_by_name(name);
 
-	if(_shdr){
-		SAFE_SET_VALUE(pSize, _shdr->sh_size / _shdr->sh_entsize);
-		SAFE_SET_VALUE(data, reinterpret_cast<T>(this->get_bias_addr() + _shdr->sh_offset));
-	}else{
-		log_error("[-] Could not found section %s\n", name);
-		exit(-1);
-	}
+    if(_shdr){
+        SAFE_SET_VALUE(pSize, _shdr->sh_size / _shdr->sh_entsize);
+        SAFE_SET_VALUE(data, reinterpret_cast<T>(this->get_bias_addr() + _shdr->sh_offset));
+    }else{
+        log_error("[-] Could not found section %s\n", name);
+        exit(-1);
+    }
 
-	SAFE_SET_VALUE(ppShdr, _shdr);
+    SAFE_SET_VALUE(ppShdr, _shdr);
 }
 
 template<class T>
 void elf_module::get_segment_info(const ElfW(Word) type, ElfW(Phdr) **ppPhdr, ElfW(Word) *pSize, T *data)
 {
 
-	ElfW(Phdr)* _phdr = find_segment_by_type(type);
-	if(_phdr){
-		SAFE_SET_VALUE(data, reinterpret_cast<T>(this->get_bias_addr() + _phdr->p_vaddr));
-		SAFE_SET_VALUE(pSize, _phdr->p_memsz);
-	}else{
-		log_error("[-] Could not found segment type is %d\n", type);
-		exit(-1);
-	}
-	SAFE_SET_VALUE(ppPhdr, _phdr);
+    ElfW(Phdr)* _phdr = find_segment_by_type(type);
+    if(_phdr){
+        SAFE_SET_VALUE(data, reinterpret_cast<T>(this->get_bias_addr() + _phdr->p_vaddr));
+        SAFE_SET_VALUE(pSize, _phdr->p_memsz);
+    }else{
+        log_error("[-] Could not found segment type is %d\n", type);
+        exit(-1);
+    }
+    SAFE_SET_VALUE(ppPhdr, _phdr);
 }
 
 ElfW(Shdr)* elf_module::find_section_by_name(const char *sname)
 {
-	ElfW(Shdr) *target = NULL;
-	ElfW(Shdr) *shdr = this->m_shdr;
-	for(int i = 0; i < this->m_ehdr->e_shnum; i += 1)
+    ElfW(Shdr) *target = NULL;
+    ElfW(Shdr) *shdr = this->m_shdr;
+    for(int i = 0; i < this->m_ehdr->e_shnum; i += 1)
     {
-		const char *name = (const char *)(shdr[i].sh_name + this->m_shstr_ptr);
-		if(!strncmp(name, sname, strlen(sname)))
+        const char *name = (const char *)(shdr[i].sh_name + this->m_shstr_ptr);
+        if(!strncmp(name, sname, strlen(sname)))
         {
-			target = (ElfW(Shdr)*)(shdr + i);
-			break;
-		}
-	}
-	return target;
+            target = (ElfW(Shdr)*)(shdr + i);
+            break;
+        }
+    }
+    return target;
 }
 
 ElfW(Phdr) *elf_module::find_segment_by_type(const ElfW(Word) type)
 {
-	ElfW(Phdr) *target = NULL;
-	ElfW(Phdr) *phdr = this->m_phdr;
+    ElfW(Phdr) *target = NULL;
+    ElfW(Phdr) *phdr = this->m_phdr;
 
-	for(int i = 0; i < this->m_ehdr->e_phnum; i += 1)
+    for(int i = 0; i < this->m_ehdr->e_phnum; i += 1)
     {
-		if(phdr[i].p_type == type)
+        if(phdr[i].p_type == type)
         {
-			target = phdr + i;
-			break;
-		}
-	}
-	return target;
+            target = phdr + i;
+            break;
+        }
+    }
+    return target;
 }
 
 uint32_t elf_module::elf_hash(const char *name)
 {
-	const unsigned char *tmp = (const unsigned char *) name;
-	uint32_t h = 0, g;
-	while (*tmp) {
-		h = (h << 4) + *tmp++;
-		g = h & 0xf0000000;
-		h ^= g;
-		h ^= g >> 24;
-	}
-	return h;
+    const unsigned char *tmp = (const unsigned char *) name;
+    uint32_t h = 0, g;
+    while (*tmp) {
+        h = (h << 4) + *tmp++;
+        g = h & 0xf0000000;
+        h ^= g;
+        h ^= g >> 24;
+    }
+    return h;
 }
 
 uint32_t elf_module::gnu_hash (const char *s)
@@ -357,7 +357,8 @@ bool elf_module::gnu_lookup(char const* symbol, ElfW(Sym) **sym, int *symidx)
     return false;
 }
 
-bool elf_module::find_symbol_by_name(const char *symbol, ElfW(Sym) **sym, int *symidx) {
+bool elf_module::find_symbol_by_name(const char *symbol, ElfW(Sym) **sym, int *symidx)
+{
     if (this->m_is_gnu_hash) {
         bool result = gnu_lookup(symbol, sym, symidx);
         if (!result) {
@@ -387,9 +388,9 @@ bool elf_module::hook(const char *symbol, void *replace_func, void **old_func)
     ElfW(Sym) *sym = NULL;
     int symidx = 0;
 
-	assert(old_func);
-	assert(replace_func);
-	assert(symbol);
+    assert(old_func);
+    assert(replace_func);
+    assert(symbol);
 
     if (!this->m_is_loaded) {
         this->m_is_loaded = this->get_segment_view();
@@ -398,50 +399,50 @@ bool elf_module::hook(const char *symbol, void *replace_func, void **old_func)
         }
     }
 
-	this->find_symbol_by_name(symbol, &sym, &symidx);
-	if(!sym)
+    this->find_symbol_by_name(symbol, &sym, &symidx);
+    if(!sym)
     {
-		log_error("[-] Could not find symbol %s\n", symbol);
-		goto fail;
-	}
+        log_error("[-] Could not find symbol %s\n", symbol);
+        goto fail;
+    }
     else
     {
-		log_info("[+] sym %p, symidx %d.\n", sym, symidx);
-	}
+        log_info("[+] sym %p, symidx %d.\n", sym, symidx);
+    }
 
     for (uint32_t i = 0; i < this->m_relplt_size; i++)
     {
-		ElfW(Rel)& rel = this->m_relplt_ptr[i];
-		if (ELF32_R_SYM(rel.r_info) == symidx && ELF32_R_TYPE(rel.r_info) == R_ARM_JUMP_SLOT)
+        ElfW(Rel)& rel = this->m_relplt_ptr[i];
+        if (ELF32_R_SYM(rel.r_info) == symidx && ELF32_R_TYPE(rel.r_info) == R_ARM_JUMP_SLOT)
         {
 
-			void *addr = (void *) (this->get_bias_addr() + rel.r_offset);
-			if (this->replace_function(addr, replace_func, old_func))
+            void *addr = (void *) (this->get_bias_addr() + rel.r_offset);
+            if (this->replace_function(addr, replace_func, old_func))
             {
-				goto fail;
+                goto fail;
             }
-			break;
-		}
-	}
+            break;
+        }
+    }
 
-	for (uint32_t i = 0; i < this->m_reldyn_size; i++)
+    for (uint32_t i = 0; i < this->m_reldyn_size; i++)
     {
-		ElfW(Rel)& rel = this->m_reldyn_ptr[i];
-		if (ELF32_R_SYM(rel.r_info) == symidx &&
-				(ELF32_R_TYPE(rel.r_info) == R_ARM_ABS32
-						|| ELF32_R_TYPE(rel.r_info) == R_ARM_GLOB_DAT))
+        ElfW(Rel)& rel = this->m_reldyn_ptr[i];
+        if (ELF32_R_SYM(rel.r_info) == symidx &&
+                (ELF32_R_TYPE(rel.r_info) == R_ARM_ABS32
+                        || ELF32_R_TYPE(rel.r_info) == R_ARM_GLOB_DAT))
         {
 
-			void *addr = (void *) (this->get_bias_addr() + rel.r_offset);
-			if (this->replace_function(addr, replace_func, old_func))
+            void *addr = (void *) (this->get_bias_addr() + rel.r_offset);
+            if (this->replace_function(addr, replace_func, old_func))
             {
-				goto fail;
+                goto fail;
             }
-		}
-	}
+        }
+    }
     return true;
 fail:
-	return false;
+    return false;
 }
 
 
@@ -449,57 +450,56 @@ fail:
 
 int elf_module::set_mem_access(void *addr, int prots)
 {
-	void *page_start_addr = (void *)PAGE_START((uint32_t)addr);
+    void *page_start_addr = (void *)PAGE_START((uint32_t)addr);
     //PFLAGS_TO_PROT(this->m_phdr->p_flags);
-	return mprotect(page_start_addr, getpagesize(), prots);
+    return mprotect(page_start_addr, getpagesize(), prots);
 }
 
 int elf_module::clear_cache(void *addr, size_t len)
 {
-	void *end = (uint8_t *)addr + len;
-	return syscall(0xf0002, addr, end);
+    void *end = (uint8_t *)addr + len;
+    return syscall(0xf0002, addr, end);
 }
 
 
 bool elf_module::replace_function(void *addr, void *replace_func, void **old_func)
 {
-	bool res = false;
+    bool res = false;
 
-	if(*(void **)addr == replace_func)
+    if(*(void **)addr == replace_func)
     {
-		log_warn("addr %p had been replace.\n", addr);
-		goto fail;
-	}
+        log_warn("addr %p had been replace.\n", addr);
+        goto fail;
+    }
 
-	if(!*old_func){
-		*old_func = *(void **)addr;
-	}
+    if(!*old_func){
+        *old_func = *(void **)addr;
+    }
 
-	if(set_mem_access((void *)addr, PROT_EXEC|PROT_READ|PROT_WRITE))
+    if(set_mem_access((void *)addr, PROT_EXEC|PROT_READ|PROT_WRITE))
     {
         log_error("[-] modifymemAccess fails, error %s.\n", strerror(errno));
-		res = true;
-		goto fail;
-	}
+        res = true;
+        goto fail;
+    }
 
-	*(void **)addr = replace_func;
-	clear_cache(addr, getpagesize());
-	log_info("[+] old_func is %p, replace_func is %p, new_func %p.\n", *old_func, replace_func, (void*)(*(uint32_t *)addr));
+    *(void **)addr = replace_func;
+    clear_cache(addr, getpagesize());
+    log_info("[+] old_func is %p, replace_func is %p, new_func %p.\n", *old_func, replace_func, (void*)(*(uint32_t *)addr));
 
 fail:
-	return res;
+    return res;
 }
 
-
 void elf_module::dump_sections(void){
-	Elf32_Half shnum = this->m_ehdr->e_shnum;
-	Elf32_Shdr *shdr = this->m_shdr;
+    Elf32_Half shnum = this->m_ehdr->e_shnum;
+    Elf32_Shdr *shdr = this->m_shdr;
 
-	log_info("Sections: :%d\n",shnum);
-	for(int i = 0; i < shnum; i += 1, shdr += 1) {
-		const char *name = shdr->sh_name == 0 || !this->m_shstr_ptr ? "UNKOWN" :  (const char *)(shdr->sh_name + this->m_shstr_ptr);
-		log_info("[%.2d] %-20s 0x%.8x\n", i, name, shdr->sh_addr);
-	}
+    log_info("Sections: :%d\n",shnum);
+    for(int i = 0; i < shnum; i += 1, shdr += 1) {
+        const char *name = shdr->sh_name == 0 || !this->m_shstr_ptr ? "UNKOWN" :  (const char *)(shdr->sh_name + this->m_shstr_ptr);
+        log_info("[%.2d] %-20s 0x%.8x\n", i, name, shdr->sh_addr);
+    }
 
     log_info("Sections: end\n");
 }
@@ -519,16 +519,16 @@ void elf_module::dump_sections2() {
 
 void elf_module::dump_segments(void)
 {
-	ElfW(Phdr) *phdr = this->m_phdr;
-	ElfW(Half) phnum = this->m_ehdr->e_phnum;
+    ElfW(Phdr) *phdr = this->m_phdr;
+    ElfW(Half) phnum = this->m_ehdr->e_phnum;
 
-	log_info("Segments: \n");
-	for(int i = 0; i < phnum; i++){
+    log_info("Segments: \n");
+    for(int i = 0; i < phnum; i++){
         log_info("[%.2d] %-.8x 0x%-.8x 0x%-.8x %-8d %-8d\n", i,
-		 		phdr[i].p_type, phdr[i].p_vaddr,
-		 		phdr[i].p_paddr, phdr[i].p_filesz,
-		 		phdr[i].p_memsz);
-	}
+                 phdr[i].p_type, phdr[i].p_vaddr,
+                 phdr[i].p_paddr, phdr[i].p_filesz,
+                 phdr[i].p_memsz);
+    }
 }
 const static struct dyn_name_map_t{
     const char* dyn_name;
@@ -578,59 +578,58 @@ const char* elf_module::convert_dynamic_tag_to_name(int d_tag)
 
 void elf_module::dump_dynamics(void)
 {
-	ElfW(Dyn) *dyn = this->m_dyn_ptr;
+    ElfW(Dyn) *dyn = this->m_dyn_ptr;
 
-	log_info(".dynamic section info:\n");
-	const char *type = NULL;
+    log_info(".dynamic section info:\n");
+    const char *type = NULL;
 
-	for(int i = 0; i < (int)this->m_dyn_size; i++)
+    for(int i = 0; i < (int)this->m_dyn_size; i++)
     {
         type = convert_dynamic_tag_to_name(dyn[i].d_tag);
         log_info("[%.2d] %-14s 0x%-.8x 0x%-.8x\n", i, type,  dyn[i].d_tag, dyn[i].d_un.d_val);
-		if(dyn[i].d_tag == DT_NULL){
-			break;
-		}
-	}
+        if(dyn[i].d_tag == DT_NULL){
+            break;
+        }
+    }
     return;
 }
 
 void elf_module::dump_symbols(void)
 {
-	ElfW(Sym) *sym = this->m_sym_ptr;
+    ElfW(Sym) *sym = this->m_sym_ptr;
 
-	log_info("dynsym section info: \n");
+    log_info("dynsym section info: \n");
     if (this->get_is_gnu_hash()) {
 
     } else {
         for(int i=0; i< (int)this->m_sym_size; i++)
         {
-    		log_info("[%2d] %-20s\n", i, sym[i].st_name + this->m_symstr_ptr);
-    	}
+            log_info("[%2d] %-20s\n", i, sym[i].st_name + this->m_symstr_ptr);
+        }
     }
 
     return;
 }
 
+void elf_module::dump_rel_info(void)
+{
+    ElfW(Rel)* rels[] = {this->m_reldyn_ptr, this->m_relplt_ptr};
+    ElfW(Word) resszs[] = {this->m_reldyn_size, this->m_relplt_size};
 
-void elf_module::dump_rel_info(void){
-	ElfW(Rel)* rels[] = {this->m_reldyn_ptr, this->m_relplt_ptr};
-	ElfW(Word) resszs[] = {this->m_reldyn_size, this->m_relplt_size};
+    ElfW(Sym) *sym = this->m_sym_ptr;
 
-	ElfW(Sym) *sym = this->m_sym_ptr;
-
-	log_info("rel section info:\n");
-	for(int i = 0; i < (int)(sizeof(rels)/sizeof(rels[0])); i++)
-
+    log_info("rel section info:\n");
+    for(int i = 0; i < (int)(sizeof(rels)/sizeof(rels[0])); i++)
     {
-		ElfW(Rel) *rel = rels[i];
-		ElfW(Word) relsz = resszs[i];
+        ElfW(Rel) *rel = rels[i];
+        ElfW(Word) relsz = resszs[i];
 
-		for(int j = 0; j < (int)
+        for(int j = 0; j < (int)
         relsz; j += 1)
         {
             const char *name = sym[ELF32_R_SYM(rel[j].r_info)].st_name + this->m_symstr_ptr;
             log_info("[%.2d-%.4d] 0x%-.8x 0x%-.8x %-10s\n", i, j, rel[j].r_offset, rel[j].r_info, name);
-		}
-	}
+        }
+    }
     return;
 }
