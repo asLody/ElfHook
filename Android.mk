@@ -3,18 +3,16 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := ElfHook
-LOCAL_LDLIBS := -L$(SYSROOT)/usr/lib -llog
+LOCAL_LDLIBS := -llog
 LOCAL_SRC_FILES := \
-                src/ElfCommon.cpp \
-                src/ElfHooker.cpp \
-				src/ElfModule.cpp \
+                src/elf_common.cpp \
+                src/elf_hooker.cpp \
+				src/elf_module.cpp \
 				src/main.cpp
 
 LOCAL_C_INCLUDES :=
 
-LOCAL_LDFLAGS := \
-				-fPIE \
-				-pie
+LOCAL_LDFLAGS :=
 
 #LOCAL_STATIC_LIBRARIES :=
 LOCAL_SHARED_LIBRARIES := stdc++
@@ -22,8 +20,9 @@ LOCAL_SHARED_LIBRARIES := stdc++
 LOCAL_CFLAGS := \
                 -Wno-write-strings \
                 -DHAVE_LITTLE_ENDIAN \
-                -DELFHOOKER_STANDALONE=1
+                -DELFHOOK_STANDALONE=0
 include $(BUILD_SHARED_LIBRARY)
+
 ####################################
 
-# include $(BUILD_EXECUTABLE)
+#### include $(BUILD_EXECUTABLE)
