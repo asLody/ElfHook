@@ -624,8 +624,7 @@ void elf_module::dump_rel_info(void)
         ElfW(Rel) *rel = rels[i];
         ElfW(Word) relsz = resszs[i];
 
-        for(int j = 0; j < (int)
-        relsz; j += 1)
+        for(int j = 0; j < (int)relsz; j += 1)
         {
             const char *name = sym[ELF32_R_SYM(rel[j].r_info)].st_name + this->m_symstr_ptr;
             log_info("[%.2d-%.4d] 0x%-.8x 0x%-.8x %-10s\n", i, j, rel[j].r_offset, rel[j].r_info, name);

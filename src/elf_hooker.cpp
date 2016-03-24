@@ -14,7 +14,7 @@
 
 elf_hooker::elf_hooker()
 {
-    
+
 }
 
 elf_hooker::~elf_hooker()
@@ -94,7 +94,6 @@ void elf_hooker::dump_module_list()
 
 void elf_hooker::hook_all_modules(const char* func_name, void* pfn_new, void** ppfn_old)
 {
-    old_dlopen = NULL;
     for (std::vector<elf_module>::iterator itor = m_module_list.begin();
                 itor != m_module_list.end();
                 itor ++)
