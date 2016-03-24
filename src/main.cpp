@@ -5,12 +5,16 @@
 
 int main(int argc, char* argv[])
 {
-    printf("hello world\n");
+    char ch = 0;
     ElfHooker hooker;
-    hooker.testDlOpen();
-    hooker.phraseProcMaps();
-    hooker.dumpModuleList();
-    hooker.hookAllModules();
+    hooker.testDLOpen();
+log_dbg("begin self code..\n");
+//    hooker.phraseProcMaps();
+//    hooker.dumpModuleList();
+    // hooker.hookAllModules();
 
+    do {
+        ch = getc(stdin);
+    } while(ch != 'q');
     return 0;
 }

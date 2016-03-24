@@ -1,13 +1,13 @@
 
 
-######### 检查安装路径  ##########
+######### 锟斤拷锟介安装路锟斤拷  ##########
 ifndef PREFIX
 PREFIX        = /usr
 endif
-			
-EXEC          =	
 
-ANDROID_NDK  =  /Users/wuxin/workspace/android/android-ndk-r10b
+EXEC          =
+
+ANDROID_NDK  =  /Users/wuxin/Library/Android/ndk
 CROSS_PREFIX =	arm-linux-androideabi-
 SYSROOT      = $(ANDROID_NDK)/platforms/android-19/arch-arm
 
@@ -18,9 +18,10 @@ AR           = $(CROSS_PREFIX)ar
 LD           = $(CROSS_PREFIX)gcc
 RANLIB       = $(CROSS_PREFIX)ranlib
 STRIP        =	$(CROSS_PREFIX)strip
-CFLAGS       += -fPIE -Wall --sysroot=$(SYSROOT) 
+CFLAGS       += -fPIE -Wall --sysroot=$(SYSROOT)
 CFLAGS       += -I$(STL_PORT)/stlport
-LDFLAGS	     += --sysroot=$(SYSROOT) 
+LDFLAGS	     += --sysroot=$(SYSROOT)
 LDFLAGS      += $(STL_PORT)/libs/armeabi-v7a/libstlport_static.a
-LDFLAGS      += -fPIE -pie -lstdc++ 
-EXTRA_OBJS   += 
+LDFLAGS      += -fPIE -pie -lstdc++
+JNIFLAGS     = APP_BUILD_SCRIPT=./Android.mk APP_PLATFORM=android-19 APP_STL=stlport_static
+EXTRA_OBJS   +=

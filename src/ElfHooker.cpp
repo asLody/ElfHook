@@ -44,8 +44,8 @@ bool ElfHooker::phraseProcMaps()
     FILE* fd = fopen("/proc/self/maps", "r");
     if (fd != NULL)
     {
-        char buff[512];
-        while(fgets(buff, sizeof(buff), fd) != NULL)
+        char buff[2048+1];
+        while(fgets(buff, 2048, fd) != NULL)
         {
             const char *sep = "\t \r\n";
             char *line = NULL;
@@ -62,6 +62,7 @@ bool ElfHooker::phraseProcMaps()
             strtok_r(NULL, sep, &line);  // offsets
             strtok_r(NULL, sep, &line);  // dev
             strtok_r(NULL, sep, &line);  // node
+            
             char* moduleName = strtok_r(NULL, sep, &line); //module name
             void* baseAddr = NULL;
             void* endAddr = NULL;
@@ -132,8 +133,8 @@ fail:
 	return res;
 }
 
-#define R_ARM_ABS32 0x02
-#define R_ARM_GLOB_DAT 0x15
+#define R_ARM_ABS32     0x02
+#define R_ARM_GLOB_DAT  0x15
 #define R_ARM_JUMP_SLOT 0x16
 
 int ElfHooker::hook(ElfModule* module, const char *symbol, void *replace_func, void **old_func) {
@@ -142,7 +143,7 @@ int ElfHooker::hook(ElfModule* module, const char *symbol, void *replace_func, v
 	assert(replace_func);
 	assert(symbol);
 
-//module->getElfBySectionView();
+
 	if (!module->getElfBySegmentView()) {
         return 0;
     }
@@ -224,10 +225,10 @@ void ElfHooker::hookAllModules()
 
 #include <dlfcn.h>
 
-void ElfHooker::testDlOpen()
+void ElfHooker::testDLOpen()
 {
-    void* h = dlopen("libart.so", RTLD_LAZY);
 
+    void* h = dlopen("libart.so", RTLD_LAZY);
     void* f = dlsym(h,"artAllocObjectFromCodeResolvedRegion");
     log_info("artAllocObjectFromCodeResolvedRegion : %p\n", f);
     //dlclose(h);

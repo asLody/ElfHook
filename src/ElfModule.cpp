@@ -9,9 +9,9 @@
 #include "ElfModule.h"
 #include "ElfCommon.h"
 
-#define DT_GNU_HASH     ((int)0x6ffffef5)
-#define DT_GNU_RELDYN   ((int)0x6000000f)
-#define DT_GNU_RELDYNSZ ((int)0x60000010)
+#define DT_GNU_HASH      ((int)0x6ffffef5)
+#define DT_ANDROID_REL   ((int)0x6000000f)
+#define DT_ANDROID_RELSZ ((int)0x60000010)
 
 //static const ElfW(Versym) kVersymNotNeeded = 0;
 //static const ElfW(Versym) kVersymGlobal    = 1;
@@ -99,11 +99,11 @@ bool ElfModule::getElfBySegmentView(void)
 			this->symstr = reinterpret_cast<const char *>(this->biasAddr + dyn->d_un.d_ptr);
 			break;
 		case DT_REL:
-        case DT_GNU_RELDYN:
+        case DT_ANDROID_REL:
 			this->reldyn = reinterpret_cast<ElfW(Rel) *>(this->biasAddr + dyn->d_un.d_ptr);
 			break;
 		case DT_RELSZ:
-        case DT_GNU_RELDYNSZ:
+        case DT_ANDROID_RELSZ:
 			this->reldynsz = dyn->d_un.d_val / sizeof(ElfW(Rel));
 			break;
 		case DT_JMPREL:

@@ -20,7 +20,7 @@ public:
     int replaceFunc(void *addr, void *replace_func, void **old_func);
     int hook(ElfModule* module, const char *symbol, void *replace_func, void **old_func);
     void hookAllModules();
-    void testDlOpen();
+    void testDLOpen();
 protected:
     std::vector<ElfModule> moduleList;
 };
