@@ -23,20 +23,19 @@ ref:
 &emsp;bionic : [https://android.googlesource.com/platform/bionic]
 
 
-## 0x02 How To Make
+## 0x02 How To Build
 
 #### Export android ndk path
 
-> export -p PATH=$PATH:$ANDROID_NDK/toolchains/arm-linux-androideabi-4.6/prebuilt/darwin-x86_64/bin
+> export -p PATH=$PATH:$ANDROID_NDK
 
-#### Build executable run in "adb shell", output file is "./bin/ElfHook"
 
-> make
-
-> make clean
-
-#### Build jni library, output file is "./bin/armeabi/libElfHook.so"
+#### Build
 
 > make jni
 
 > make jni-clean
+
+#### or
+
+> ndk-build NDK_PROJECT_PATH=. NDK_OUT=./objs NDK_LIBS_OUT=./bin APP_BUILD_SCRIPT=./Android.mk APP_PLATFORM=android-19 APP_STL=stlport_static
