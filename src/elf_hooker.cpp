@@ -43,7 +43,6 @@ bool elf_hooker::phrase_proc_base_addr(char* addr, void** pbase_addr, void** pen
 
 bool elf_hooker::phrase_proc_maps()
 {
-//    m_module_list.clear();
     m_modules.clear();
     FILE* fd = fopen("/proc/self/maps", "r");
     if (fd != NULL)
@@ -115,3 +114,12 @@ void elf_hooker::hook_all_modules(const char* func_name, void* pfn_new, void** p
     }
     return;
 }
+
+
+// void* elf_hooker::caculate_base_addr_from_soinfo_pointer(void* soinfo_addr)
+// {
+//     uint32_t
+//     if (soinfo_addr == NULL) {
+//         return NULL;
+//     }
+// }

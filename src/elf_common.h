@@ -32,10 +32,15 @@
 #endif
 
 
+#if defined(__LP64__)
+#define ElfW(type) Elf64_ ## type
+#else
 #define ElfW(type) Elf32_ ## type
-//#define ElfW(type) Elf64_ ## type
+#endif
+
 
 #define powerof2(x)     ((((x)-1)&(x))==0)
+#define SOINFO_NAME_LEN (128)
 
 inline static int GetTargetElfMachine()
 {
