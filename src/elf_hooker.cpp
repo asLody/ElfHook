@@ -14,12 +14,14 @@
 
 elf_hooker::elf_hooker()
 {
-
+    this->m_prehook_cb = NULL;
 }
 
 elf_hooker::~elf_hooker()
 {
-    m_module_list.clear();
+//    m_module_list.clear();
+    m_modules.clear();
+    this->m_prehook_cb = NULL;
 }
 
 bool elf_hooker::phrase_proc_base_addr(char* addr, void** pbase_addr, void** pend_addr)
@@ -41,7 +43,8 @@ bool elf_hooker::phrase_proc_base_addr(char* addr, void** pbase_addr, void** pen
 
 bool elf_hooker::phrase_proc_maps()
 {
-    m_module_list.clear();
+//    m_module_list.clear();
+    m_modules.clear();
     FILE* fd = fopen("/proc/self/maps", "r");
     if (fd != NULL)
     {
@@ -51,28 +54,35 @@ bool elf_hooker::phrase_proc_maps()
             const char *sep = "\t \r\n";
             char *line = NULL;
             char* addr = strtok_r(buff, sep, &line);
-            if (!addr)
-            {
+            if (!addr) {
                 continue;
             }
-            char* flags = strtok_r(NULL, sep, &line);
-            if (!flags || flags[2] != 'x')
-            {
+            char *flags = strtok_r(NULL, sep, &line);
+            if (!flags || flags[0] != 'r') {
+                // mem section cound NOT be read..
                 continue;
             }
             strtok_r(NULL, sep, &line);  // offsets
             strtok_r(NULL, sep, &line);  // dev
             strtok_r(NULL, sep, &line);  // node
 
-            char* module_name = strtok_r(NULL, sep, &line); //module name
-            void* base_addr = NULL;
-            void* end_addr = NULL;
-            if (phrase_proc_base_addr(addr, &base_addr, &end_addr))
-            {
-                elf_module module((uint32_t)base_addr, module_name);
-                m_module_list.push_back(module);
+            char* filename = strtok_r(NULL, sep, &line); //module name
+            if (!filename) {
+                continue;
             }
-            //if (strstr())
+            std::string module_name = filename;
+            std::map<std::string, elf_module>::iterator itor = m_modules.find(module_name);
+            if (itor == m_modules.end())
+            {
+                void* base_addr = NULL;
+                void* end_addr = NULL;
+                if (phrase_proc_base_addr(addr, &base_addr, &end_addr) && elf_module::is_elf_module(base_addr))
+                {
+//                    log_info("insert module: %p, %s\n", base_addr, module_name.c_str());
+                    elf_module module((uint32_t)base_addr, module_name.c_str());
+                    m_modules.insert(std::pair<std::string, elf_module>(module_name, module));
+                }
+            }
         }
         return 0;
     }
@@ -82,38 +92,26 @@ bool elf_hooker::phrase_proc_maps()
 
 void elf_hooker::dump_module_list()
 {
-    for (std::vector<elf_module>::iterator itor = m_module_list.begin();
-                itor != m_module_list.end();
-                itor ++)
+    for (std::map<std::string, elf_module>::iterator itor = m_modules.begin();
+                    itor != m_modules.end();
+                    itor++ )
     {
-        log_info("BaseAddr: %X ModuleName: %s\n", itor->get_base_addr(), itor->get_module_name());
+        log_info("BaseAddr: %X ModuleName: %s\n", itor->second.get_base_addr(), itor->second.get_module_name());
     }
 }
-
-
 
 void elf_hooker::hook_all_modules(const char* func_name, void* pfn_new, void** ppfn_old)
 {
-    for (std::vector<elf_module>::iterator itor = m_module_list.begin();
-                itor != m_module_list.end();
-                itor ++)
+    for (std::map<std::string, elf_module>::iterator itor = m_modules.begin();
+                    itor != m_modules.end();
+                    itor++ )
     {
-        const char* moduleName = "/system/lib/libart.so";
-//        const char* moduleName = "/data/ElfHook";
-        if (strncmp(itor->get_module_name(), moduleName, strlen(moduleName)) != 0)
+        if (this->m_prehook_cb && !this->m_prehook_cb(itor->second.get_module_name(), func_name))
         {
             continue;
         }
-        log_info("Hook Module : %s\n", itor->get_module_name());
-        this->hook(itor, func_name, pfn_new, ppfn_old);
-
+        log_info("Hook Module : %s\n", itor->second.get_module_name());
+        this->hook(&itor->second, func_name, pfn_new, ppfn_old);
     }
     return;
 }
-
-
-
-
-
-//        this->hook(itor, "dlopen", (void*)nativehook_impl_dlopen, (void**)&old_dlopen);
-//        this->hook(itor, "artAllocObjectFromCodeResolvedRegion", (void*)nativehook_impl_dlopen, (void**)&old_dlopen);

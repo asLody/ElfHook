@@ -10,6 +10,8 @@
 
 static void* (*__old_impl_dlopen)(const char* filename, int flag);
 
+static int (*__old_impl_connect)(int sockfd,struct sockaddr * serv_addr,int addrlen);
+
 extern "C" {
 
     static void* __nativehook_impl_dlopen(const char* filename, int flag)
@@ -19,6 +21,25 @@ extern "C" {
         return res;
     }
 
+    static int __nativehook_impl_connect(int sockfd,struct sockaddr * serv_addr,int addrlen)
+    {
+        log_info("__nativehook_impl_connect ->\n");
+        int res = __old_impl_connect(sockfd, serv_addr, addrlen);
+        return res;
+    }
+
+}
+
+static bool __prehook(const char* module_name, const char* func_name)
+{
+
+    //if (strncmp(module_name, moduleName, strlen(moduleName)) == 0)
+    if (strstr(module_name, "base.odex") != NULL ||
+        strstr(module_name, "boot.oat") != NULL)
+    {
+       return true;
+    }
+    return false;
 }
 
 #if (ELFHOOK_STANDALONE)
@@ -32,9 +53,11 @@ int main(int argc, char* argv[])
     void* f = dlsym(h,"artAllocObjectFromCodeResolvedRegion");
     log_info("artAllocObjectFromCodeResolvedRegion : %p\n", f);
 
+    hooker.set_prehook_cb(__prehook);
     hooker.phrase_proc_maps();
     hooker.dump_module_list();
     hooker.hook_all_modules("dlopen", (void*)__nativehook_impl_dlopen, (void**)&__old_impl_dlopen);
+    hooker.hook_all_modules("connect", (void*)__nativehook_impl_connect, (void**)&__old_impl_connect);
 
     do {
         ch = getc(stdin);
@@ -61,15 +84,17 @@ static void __elfhooker_deinit(void);
 static JNINativeMethod __methods[] =
 {
     {"setHook","()I",(void *)__set_hook },
-    {"test","()I",(void *)__test },
 };
 
 static int __set_hook(JNIEnv *env, jobject thiz)
 {
     log_info("__set_hook() -->\r\n");
+//    __hooker.set_prehook_cb(__prehook);
     __hooker.phrase_proc_maps();
-    __hooker.dump_module_list();
+//    __hooker.dump_module_list();
     __hooker.hook_all_modules("dlopen", (void*)__nativehook_impl_dlopen, (void**)&__old_impl_dlopen);
+    __hooker.hook_all_modules("connect", (void*)__nativehook_impl_connect, (void**)&__old_impl_connect);
+
     return 0;
 }
 

@@ -23,8 +23,9 @@
 
 
 #define PAGE_START(addr) (~(getpagesize() - 1) & (addr))
-#define PAGE_END(addr) PAGE_START((addr) + (PAGE_SIZE-1))
+#define PAGE_END(addr)   PAGE_START((addr) + (PAGE_SIZE-1))
 
+#define SAFE_SET_VALUE(t, v) if(t) *(t) = (v)
 
 #define MAYBE_MAP_FLAG(x, from, to)  (((x) & (from)) ? (to) : 0)
 #define PFLAGS_TO_PROT(x)            (MAYBE_MAP_FLAG((x), PF_X, PROT_EXEC) | \
@@ -65,6 +66,35 @@ elf_module::~elf_module()
     return;
 }
 
+bool elf_module::is_elf_module(void* base_addr)
+{
+    ElfW(Ehdr) *ehdr = reinterpret_cast<ElfW(Ehdr) *>(base_addr);
+
+    if (memcmp(ehdr->e_ident, ELFMAG, SELFMAG) != 0) {
+        return false;
+    }
+    int elf_class = ehdr->e_ident[EI_CLASS];
+#if defined(__LP64__)
+    if (elf_class != ELFCLASS64) {
+        return false;
+    }
+#else
+    if (elf_class != ELFCLASS32) {
+        return false;
+    }
+#endif
+    if (ehdr->e_ident[EI_DATA] != ELFDATA2LSB) {
+        return false;
+    }
+    if (ehdr->e_version != EV_CURRENT) {
+        return false;
+    }
+    if (ehdr->e_machine != GetTargetElfMachine()) {
+        return false;
+    }
+    return true;
+}
+
 ElfW(Addr) elf_module::caculate_bias_addr(const ElfW(Ehdr)* elf)
 {
     ElfW(Addr) offset = elf->e_phoff;
@@ -87,6 +117,9 @@ bool elf_module::get_segment_view(void)
     this->m_shdr = reinterpret_cast<Elf32_Shdr *>(this->get_base_addr() + this->m_ehdr->e_shoff);
     this->m_phdr = reinterpret_cast<Elf32_Phdr *>(this->get_base_addr() + this->m_ehdr->e_phoff);
 
+//    log_dbg("ehdr:%p, phdr:%p, shdr:%p\n", this->m_ehdr, this->m_phdr, this->m_shdr);
+//    this->dump_elf_header();
+
     if (!this->m_bias_addr)
     {
         this->m_bias_addr = this->caculate_bias_addr(this->m_ehdr);
@@ -98,7 +131,7 @@ bool elf_module::get_segment_view(void)
     }
     else
     {
-        log_error("[-] (%d) Elf object, NOT Need Process..\n", this->m_ehdr->e_type);
+        log_error("[-] (%08x) Elf object, NOT Need Process..\n", this->m_ehdr->e_type);
         return false;
     }
 
@@ -171,8 +204,7 @@ bool elf_module::get_segment_view(void)
                 this->m_gnu_maskwords -= 1;
                 this->set_is_gnu_has(true);
 
-
-                log_info("bbucket(%d), symndx(%d), maskworks(%d), shift2(%d)\n",
+                log_dbg("bbucket(%d), symndx(%d), maskworks(%d), shift2(%d)\n",
                         this->m_gnu_nbucket,   this->m_gnu_symndx,
                         this->m_gnu_maskwords, this->m_gnu_shift2);
                 break;
@@ -180,13 +212,12 @@ bool elf_module::get_segment_view(void)
         }
     }
 
-    this->dump_symbols();
+//    this->dump_symbols();
     return true;
 }
 
-#define SAFE_SET_VALUE(t, v) if(t) *(t) = (v)
 template<class T>
-void elf_module::get_section_info(const char *name, Elf32_Word *pSize, Elf32_Shdr **ppShdr, T *data)
+void elf_module::get_section_info(const char *name, ElfW(Shdr) **ppShdr, ElfW(Word) *pSize, T *data)
 {
     Elf32_Shdr *_shdr = this->find_section_by_name(name);
 
@@ -316,14 +347,14 @@ bool elf_module::gnu_lookup(char const* symbol, ElfW(Sym) **sym, int *symidx)
                 this->get_module_name(),
                 reinterpret_cast<void*>(this->get_base_addr()));
 
-    log_info("word_num(%d), bloom_word(%x), hash(%08x), h2(%x), bloom_mask_bits(%x)\n", word_num, bloom_word, hash, h2, bloom_mask_bits);
-    log_info("%x; %x, %x, %x\n",  (hash % bloom_mask_bits) ,
-                        (bloom_word >> (hash % bloom_mask_bits)),
-                        (h2 % bloom_mask_bits),
-                        (bloom_word >> (h2 % bloom_mask_bits)));
+    // log_dbg("word_num(%d), bloom_word(%x), hash(%08x), h2(%x), bloom_mask_bits(%x)\n", word_num, bloom_word, hash, h2, bloom_mask_bits);
+    // log_dbg("%x; %x, %x, %x\n",  (hash % bloom_mask_bits) ,
+    //                     (bloom_word >> (hash % bloom_mask_bits)),
+    //                     (h2 % bloom_mask_bits),
+    //                     (bloom_word >> (h2 % bloom_mask_bits)));
     // test against bloom filter
     if ((1 & (bloom_word >> (hash % bloom_mask_bits)) & (bloom_word >> (h2 % bloom_mask_bits))) == 0) {
-        log_warn("[-] NOT Found %s in %s@%p 1\n",
+        log_dbg("[-] NOT Found %s in %s@%p 1\n",
                     symbol,
                     this->get_module_name(),
                     reinterpret_cast<void*>(this->get_base_addr()));
@@ -335,7 +366,7 @@ bool elf_module::gnu_lookup(char const* symbol, ElfW(Sym) **sym, int *symidx)
     uint32_t n = this->m_gnu_bucket[hash % this->m_gnu_nbucket];
 
     if (n == 0) {
-        log_warn("[-] NOT Found %s in %s@%p 2\n",
+        log_dbg("[-] NOT Found %s in %s@%p 2\n",
             symbol,
             this->get_module_name(),
             reinterpret_cast<void*>(this->get_base_addr()));
@@ -463,8 +494,6 @@ int elf_module::set_mem_access(ElfW(Addr) addr, int prots)
 int elf_module::get_mem_access(ElfW(Addr) addr, uint32_t* pprot)
 {
     int result = -1;
-    ElfW(Phdr) *phdr = this->m_phdr;
-    ElfW(Half) phnum = this->m_ehdr->e_phnum;
 
     const ElfW(Phdr)* phdr_table = this->m_phdr;
     const ElfW(Phdr)* phdr_end = phdr_table + this->m_ehdr->e_phnum;
@@ -488,6 +517,7 @@ int elf_module::get_mem_access(ElfW(Addr) addr, uint32_t* pprot)
     }
     return result;
 }
+
 int elf_module::clear_cache(void* addr, size_t len)
 {
     void *end = (uint8_t *)addr + len;
@@ -536,7 +566,41 @@ fail:
     return res;
 }
 
-void elf_module::dump_sections(void){
+
+void elf_module::dump_elf_header(void)
+{
+    static char alpha_tab[17] = "0123456789ABCDEF";
+    char buff[EI_NIDENT*3+1];
+
+    ElfW(Ehdr)* ehdr = this->m_ehdr;
+
+    log_info("Elf Header :\n");
+    for(int i = 0; i < EI_NIDENT; i++) {
+        uint8_t ch = ehdr->e_ident[i];
+        buff[i*3 + 0] = alpha_tab[(int)((ch >> 4) & 0x0F)];
+        buff[i*3 + 1] = alpha_tab[(int)(ch & 0x0F)];
+        buff[i*3 + 2] = ' ';
+    }
+    buff[EI_NIDENT*3] = '\0';
+
+    log_info("e_ident: %s\n",       buff);
+    log_info("e_type: %x\n",        ehdr->e_type);
+    log_info("e_machine: %x\n",     ehdr->e_machine);
+    log_info("e_version: %x\n",     ehdr->e_version);
+    log_info("e_entry: %x\n",       ehdr->e_entry);
+    log_info("e_phoff: %x\n",       ehdr->e_phoff);
+    log_info("e_shoff: %x\n",       ehdr->e_shoff);
+    log_info("e_flags: %x\n",       ehdr->e_flags);
+    log_info("e_ehsize: %x\n",      ehdr->e_ehsize);
+    log_info("e_phentsize: %x\n",   ehdr->e_phentsize);
+    log_info("e_phnum: %x\n",       ehdr->e_phnum);
+    log_info("e_shentsize: %x\n",   ehdr->e_shentsize);
+    log_info("e_shnum: %x\n",       ehdr->e_shnum);
+    log_info("e_shstrndx: %x\n",    ehdr->e_shstrndx);
+}
+
+void elf_module::dump_sections(void)
+{
     Elf32_Half shnum = this->m_ehdr->e_shnum;
     Elf32_Shdr *shdr = this->m_shdr;
 

@@ -2,7 +2,7 @@
 #define __ELF_HOOKER_H__
 
 
-#include <vector>
+#include <map>
 #include <string>
 
 #include "elf_module.h"
@@ -17,7 +17,13 @@ public:
     bool phrase_proc_maps();
     void dump_module_list();
 
-    inline bool hook(elf_module* module, const char *symbol, void *replace_func, void **old_func) 
+    /* *
+        prehook_cb invoked before really hook,
+        if prehook_cb NOT set or return true, this module will be hooked,
+        if prehook_cb set and return false, this module will NOT be hooked,
+    */
+    inline void set_prehook_cb(bool (*pfn)(const char*, const char*)) { this->m_prehook_cb = pfn; }
+    inline bool hook(elf_module* module, const char *symbol, void *replace_func, void **old_func)
     {
          return module->hook(symbol, replace_func, old_func);
     }
@@ -26,7 +32,9 @@ public:
     void hook_all_modules(const char* func_name, void* pfn_new, void** ppfn_old);
 
 protected:
-    std::vector<elf_module> m_module_list;
+//    std::vector<elf_module> m_module_list;
+    std::map<std::string, elf_module> m_modules;
+    bool (*m_prehook_cb)(const char* module_name, const char* func_name);
 };
 
 #endif

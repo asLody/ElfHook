@@ -19,7 +19,7 @@ AR           = $(CROSS_PREFIX)ar
 LD           = $(CROSS_PREFIX)gcc
 RANLIB       = $(CROSS_PREFIX)ranlib
 STRIP        =	$(CROSS_PREFIX)strip
-CFLAGS       += -fPIE -Wall --sysroot=$(SYSROOT) -DELFHOOK_STANDALONE=1
+CFLAGS       += -fPIE -Werror --sysroot=$(SYSROOT) -DELFHOOK_STANDALONE=1
 CFLAGS       += -I$(STL_PORT)/stlport
 LDFLAGS      += --sysroot=$(SYSROOT)
 LDFLAGS      += $(STL_PORT)/libs/armeabi-v7a/libstlport_static.a
