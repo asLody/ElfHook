@@ -21,6 +21,16 @@
 #define R_ARM_GLOB_DAT   (0x15)
 #define R_ARM_JUMP_SLOT  (0x16)
 
+
+#define PAGE_START(addr) (~(getpagesize() - 1) & (addr))
+#define PAGE_END(addr) PAGE_START((addr) + (PAGE_SIZE-1))
+
+
+#define MAYBE_MAP_FLAG(x, from, to)  (((x) & (from)) ? (to) : 0)
+#define PFLAGS_TO_PROT(x)            (MAYBE_MAP_FLAG((x), PF_X, PROT_EXEC) | \
+                                      MAYBE_MAP_FLAG((x), PF_R, PROT_READ) | \
+                                      MAYBE_MAP_FLAG((x), PF_W, PROT_WRITE))
+
 elf_module::elf_module(ElfW(Addr) base_addr, const char* module_name)
 {
     this->m_base_addr   = base_addr;
@@ -382,7 +392,6 @@ bool elf_module::find_symbol_by_name(const char *symbol, ElfW(Sym) **sym, int *s
     return elf_lookup(symbol, sym, symidx);
 }
 
-
 bool elf_module::hook(const char *symbol, void *replace_func, void **old_func)
 {
     ElfW(Sym) *sym = NULL;
@@ -445,27 +454,52 @@ fail:
     return false;
 }
 
-
-#define PAGE_START(addr) (~(getpagesize() - 1) & (addr))
-
-int elf_module::set_mem_access(void *addr, int prots)
+int elf_module::set_mem_access(ElfW(Addr) addr, int prots)
 {
     void *page_start_addr = (void *)PAGE_START((uint32_t)addr);
-    //PFLAGS_TO_PROT(this->m_phdr->p_flags);
     return mprotect(page_start_addr, getpagesize(), prots);
 }
 
-int elf_module::clear_cache(void *addr, size_t len)
+int elf_module::get_mem_access(ElfW(Addr) addr, uint32_t* pprot)
+{
+    int result = -1;
+    ElfW(Phdr) *phdr = this->m_phdr;
+    ElfW(Half) phnum = this->m_ehdr->e_phnum;
+
+    const ElfW(Phdr)* phdr_table = this->m_phdr;
+    const ElfW(Phdr)* phdr_end = phdr_table + this->m_ehdr->e_phnum;
+
+    for (const ElfW(Phdr)* phdr = phdr_table; phdr < phdr_end; phdr++)
+    {
+        if (phdr->p_type == PT_LOAD)
+        {
+            ElfW(Addr) seg_start = this->get_bias_addr() + phdr->p_vaddr;
+            ElfW(Addr) seg_end   = seg_start + phdr->p_memsz;
+
+            ElfW(Addr) seg_page_start = PAGE_START(seg_start);
+            ElfW(Addr) seg_page_end   = PAGE_END(seg_end);
+
+            if (addr >= seg_page_start && addr < seg_page_end)
+            {
+                *pprot = PFLAGS_TO_PROT(phdr->p_flags),
+                result = 0;
+            }
+        }
+    }
+    return result;
+}
+int elf_module::clear_cache(void* addr, size_t len)
 {
     void *end = (uint8_t *)addr + len;
     return syscall(0xf0002, addr, end);
 }
 
 
-bool elf_module::replace_function(void *addr, void *replace_func, void **old_func)
+bool elf_module::replace_function(void* addr, void *replace_func, void **old_func)
 {
     bool res = false;
-
+    uint32_t old_prots = PROT_READ;
+    uint32_t prots = old_prots;
     if(*(void **)addr == replace_func)
     {
         log_warn("addr %p had been replace.\n", addr);
@@ -476,9 +510,20 @@ bool elf_module::replace_function(void *addr, void *replace_func, void **old_fun
         *old_func = *(void **)addr;
     }
 
-    if(set_mem_access((void *)addr, PROT_EXEC|PROT_READ|PROT_WRITE))
+    if (get_mem_access(reinterpret_cast<ElfW(Addr)>(addr), &old_prots)) {
+        log_error("[-] read mem access fails, error %s.\n", strerror(errno));
+        res = true;
+        goto fail;
+    }
+
+    prots = old_prots | PROT_WRITE;
+    if ((prots & PROT_WRITE) != 0) { // make sure we're never simultaneously writable / executable
+        prots &= ~PROT_EXEC;
+    }
+
+    if(set_mem_access(reinterpret_cast<ElfW(Addr)>(addr), prots))
     {
-        log_error("[-] modifymemAccess fails, error %s.\n", strerror(errno));
+        log_error("[-] modify mem access fails, error %s.\n", strerror(errno));
         res = true;
         goto fail;
     }

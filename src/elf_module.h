@@ -38,7 +38,8 @@ public:
     void get_section_info(const char *name, Elf32_Word *pSize, Elf32_Shdr **ppShdr, T *data);
 
     int  clear_cache(void *addr, size_t len);
-    int  set_mem_access(void *addr, int prots);
+    int  get_mem_access(ElfW(Addr) addr, uint32_t* pprot);
+    int  set_mem_access(ElfW(Addr) addr, int prots);
     bool replace_function(void *addr, void *replace_func, void **old_func);
     bool hook(const char *symbol, void *replace_func, void **old_func);
 
