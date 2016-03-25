@@ -39,3 +39,45 @@ ref:
 #### or
 
 > ndk-build NDK_PROJECT_PATH=. NDK_OUT=./objs NDK_LIBS_OUT=./bin APP_BUILD_SCRIPT=./Android.mk APP_PLATFORM=android-19 APP_STL=stlport_static
+
+
+## 0x03 How To Use
+
+
+elf_module is a shared library or executable, elf_hooker is wrapper of hook function.
+
+- bool elf_hooker::phrase_proc_maps()
+
+phrase /proc/self/maps to create all elf modules have been loadded
+
+- void elf_hooker::dump_module_list()
+
+print all elf moudle's info, base addr and full path.
+
+- void elf_hooker::set_prehook_cb( prehook_cb ):
+
+set a callback function, which would be invoked before hooked. if it return false,  prehook_cb function like  this:
+
+> bool prehook_cb(const char* module_name, const char* func_name);
+
+> &emsp;module_name: the full filename of shared library or executable.
+
+> &emsp;func_name: function name would be hooked.
+
+- void elf_hooker::hook_all_modules(const char \*func_name, void \*pfn_new, void\*\* ppfn_old)
+
+hook a function of all the modules, **MUST** call phrase_proc_maps() before hook_all_modules()
+
+> &emsp;func_name: the name of function that will be hooked.
+
+> &emsp;pfn_new: new function pointer
+
+> &emsp;ppfn_old: return raw function pointer, ppfn_old **MUST NOT** be NULL
+
+- bool elf_hooker::hook(elf_module \*module, const char\* func_name, void \*pfn_new, void \*\*ppfn_old)
+
+hook a function of a single module.
+
+> &emsp;module: pointer of elf_module.
+
+> &emsp;other parameters is the same as hook_all_modules()
