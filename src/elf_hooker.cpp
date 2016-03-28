@@ -78,7 +78,8 @@ bool elf_hooker::phrase_proc_maps()
                 if (phrase_proc_base_addr(addr, &base_addr, &end_addr) && elf_module::is_elf_module(base_addr))
                 {
 //                    log_info("insert module: %p, %s\n", base_addr, module_name.c_str());
-                    elf_module module((uint32_t)base_addr, module_name.c_str());
+                    elf_module module(reinterpret_cast<ElfW(Addr)>
+                    (base_addr), module_name.c_str());
                     m_modules.insert(std::pair<std::string, elf_module>(module_name, module));
                 }
             }
@@ -95,7 +96,7 @@ void elf_hooker::dump_module_list()
                     itor != m_modules.end();
                     itor++ )
     {
-        log_info("BaseAddr: %X ModuleName: %s\n", itor->second.get_base_addr(), itor->second.get_module_name());
+        log_info("BaseAddr: %lx ModuleName: %s\n", (unsigned long)itor->second.get_base_addr(), itor->second.get_module_name());
     }
 }
 

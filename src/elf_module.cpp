@@ -113,9 +113,9 @@ ElfW(Addr) elf_module::caculate_bias_addr(const ElfW(Ehdr)* elf)
 
 bool elf_module::get_segment_view(void)
 {
-    this->m_ehdr = reinterpret_cast<Elf32_Ehdr *>(this->get_base_addr());
-    this->m_shdr = reinterpret_cast<Elf32_Shdr *>(this->get_base_addr() + this->m_ehdr->e_shoff);
-    this->m_phdr = reinterpret_cast<Elf32_Phdr *>(this->get_base_addr() + this->m_ehdr->e_phoff);
+    this->m_ehdr = reinterpret_cast<ElfW(Ehdr) *>(this->get_base_addr());
+    this->m_shdr = reinterpret_cast<ElfW(Shdr) *>(this->get_base_addr() + this->m_ehdr->e_shoff);
+    this->m_phdr = reinterpret_cast<ElfW(Phdr) *>(this->get_base_addr() + this->m_ehdr->e_phoff);
 
 //    log_dbg("ehdr:%p, phdr:%p, shdr:%p\n", this->m_ehdr, this->m_phdr, this->m_shdr);
 //    this->dump_elf_header();
@@ -191,7 +191,7 @@ bool elf_module::get_segment_view(void)
                 this->m_gnu_symndx       = rawdata[1];
                 this->m_gnu_maskwords    = rawdata[2];
                 this->m_gnu_shift2       = rawdata[3];
-                this->m_gnu_bloom_filter = rawdata + 4;
+                this->m_gnu_bloom_filter = reinterpret_cast<ElfW(Addr)*>(this->get_bias_addr() + dyn->d_un.d_ptr + 16);
                 this->m_gnu_bucket       = reinterpret_cast<uint32_t*>(this->m_gnu_bloom_filter + this->m_gnu_maskwords);
                 this->m_gnu_chain        = this->m_gnu_bucket + this->m_gnu_nbucket - this->m_gnu_symndx;
 
@@ -487,7 +487,8 @@ fail:
 
 int elf_module::set_mem_access(ElfW(Addr) addr, int prots)
 {
-    void *page_start_addr = (void *)PAGE_START((uint32_t)addr);
+    void *page_start_addr = (void *)PAGE_START(
+        addr);
     return mprotect(page_start_addr, getpagesize(), prots);
 }
 
@@ -560,7 +561,7 @@ bool elf_module::replace_function(void* addr, void *replace_func, void **old_fun
 
     *(void **)addr = replace_func;
     clear_cache(addr, getpagesize());
-    log_info("[+] old_func is %p, replace_func is %p, new_func %p.\n", *old_func, replace_func, (void*)(*(uint32_t *)addr));
+    log_info("[+] old_func is %p, replace_func is %p, new_func %p.\n", *old_func, replace_func, reinterpret_cast<void*>(*(void**)addr));
 
 fail:
     return res;
@@ -587,9 +588,9 @@ void elf_module::dump_elf_header(void)
     log_info("e_type: %x\n",        ehdr->e_type);
     log_info("e_machine: %x\n",     ehdr->e_machine);
     log_info("e_version: %x\n",     ehdr->e_version);
-    log_info("e_entry: %x\n",       ehdr->e_entry);
-    log_info("e_phoff: %x\n",       ehdr->e_phoff);
-    log_info("e_shoff: %x\n",       ehdr->e_shoff);
+    log_info("e_entry: %lx\n",       (unsigned long)ehdr->e_entry);
+    log_info("e_phoff: %lx\n",       (unsigned long)ehdr->e_phoff);
+    log_info("e_shoff: %lx\n",       (unsigned long)ehdr->e_shoff);
     log_info("e_flags: %x\n",       ehdr->e_flags);
     log_info("e_ehsize: %x\n",      ehdr->e_ehsize);
     log_info("e_phentsize: %x\n",   ehdr->e_phentsize);
@@ -601,13 +602,13 @@ void elf_module::dump_elf_header(void)
 
 void elf_module::dump_sections(void)
 {
-    Elf32_Half shnum = this->m_ehdr->e_shnum;
-    Elf32_Shdr *shdr = this->m_shdr;
+    ElfW(Half) shnum = this->m_ehdr->e_shnum;
+    ElfW(Shdr) *shdr = this->m_shdr;
 
     log_info("Sections: :%d\n",shnum);
     for(int i = 0; i < shnum; i += 1, shdr += 1) {
         const char *name = shdr->sh_name == 0 || !this->m_shstr_ptr ? "UNKOWN" :  (const char *)(shdr->sh_name + this->m_shstr_ptr);
-        log_info("[%.2d] %-20s 0x%.8x\n", i, name, shdr->sh_addr);
+        log_info("[%.2d] %-20s 0x%lx\n", i, name, (unsigned long)shdr->sh_addr);
     }
 
     log_info("Sections: end\n");
@@ -619,9 +620,12 @@ void elf_module::dump_sections2() {
 
     log_info("Sections: :%d\n",shnum);
     for(int i = 0; i < shnum; i += 1, shdr += 1) {
-        log_info("Name(%08X);Type(%08X);Addr(%08X);offset(%08X);entSize(%08X)\n",
-
-            shdr->sh_name, shdr->sh_type, shdr->sh_addr, shdr->sh_offset, shdr->sh_entsize);
+        log_info("Name(%x);Type(%x);Addr(%lx);offset(%lx);entSize(%lx)\n",
+                shdr->sh_name,
+                shdr->sh_type,
+                (unsigned long)shdr->sh_addr,
+                (unsigned long)shdr->sh_offset,
+                (unsigned long)shdr->sh_entsize);
     }
     log_info("Sections: end\n");
 }
@@ -633,10 +637,14 @@ void elf_module::dump_segments(void)
 
     log_info("Segments: \n");
     for(int i = 0; i < phnum; i++){
-        log_info("[%.2d] %-.8x 0x%-.8x 0x%-.8x %-8d %-8d\n", i,
-                 phdr[i].p_type, phdr[i].p_vaddr,
-                 phdr[i].p_paddr, phdr[i].p_filesz,
-                 phdr[i].p_memsz);
+        log_info("[%.2d] %-.8x 0x%lx 0x%lx %lu %lu\n",
+                 i,
+                 phdr[i].p_type,
+                 (unsigned long)phdr[i].p_vaddr,
+                 (unsigned long)phdr[i].p_paddr,
+                 (unsigned long)phdr[i].p_filesz,
+                 (unsigned long)phdr[i].p_memsz);
+
     }
 }
 const static struct dyn_name_map_t{
@@ -695,7 +703,11 @@ void elf_module::dump_dynamics(void)
     for(int i = 0; i < (int)this->m_dyn_size; i++)
     {
         type = convert_dynamic_tag_to_name(dyn[i].d_tag);
-        log_info("[%.2d] %-14s 0x%-.8x 0x%-.8x\n", i, type,  dyn[i].d_tag, dyn[i].d_un.d_val);
+        log_info("[%.2d] %-14s 0x%lx 0x%lx\n",
+                    i,
+                    type,
+                    (unsigned long)dyn[i].d_tag,
+                    (unsigned long)dyn[i].d_un.d_val);
         if(dyn[i].d_tag == DT_NULL){
             break;
         }
@@ -736,7 +748,11 @@ void elf_module::dump_rel_info(void)
         for(int j = 0; j < (int)relsz; j += 1)
         {
             const char *name = sym[ELF32_R_SYM(rel[j].r_info)].st_name + this->m_symstr_ptr;
-            log_info("[%.2d-%.4d] 0x%-.8x 0x%-.8x %-10s\n", i, j, rel[j].r_offset, rel[j].r_info, name);
+            log_info("[%.2d-%.4d] 0x%lx 0x%lx %-10s\n",
+                            i, j,
+                            (unsigned long)rel[j].r_offset,
+                            (unsigned long)rel[j].r_info,
+                            name);
         }
     }
     return;
