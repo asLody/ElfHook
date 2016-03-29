@@ -34,9 +34,10 @@ public:
 protected:
 
     bool phrase_proc_base_addr(char* addr, void** pbase_addr, void** pend_addr);
+    bool phrase_dev_num(char* devno, int *pmajor, int *pminor);
 
 protected:
-//    std::vector<elf_module> m_module_list;
+
     std::map<std::string, elf_module> m_modules;
     bool (*m_prehook_cb)(const char* module_name, const char* func_name);
 };

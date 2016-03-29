@@ -19,7 +19,6 @@ elf_hooker::elf_hooker()
 
 elf_hooker::~elf_hooker()
 {
-//    m_module_list.clear();
     m_modules.clear();
     this->m_prehook_cb = NULL;
 }
@@ -41,8 +40,21 @@ bool elf_hooker::phrase_proc_base_addr(char* addr, void** pbase_addr, void** pen
     return false;
 }
 
+bool elf_hooker::phrase_dev_num(char* devno, int *pmajor, int *pminor)
+{
+    *pmajor = 0;
+    *pminor = 0;
+    if (devno != NULL && strlen(devno) == 5 && devno[2] == ':')
+    {
+        *pmajor = strtoul(devno + 0, NULL, 16);
+        *pminor = strtoul(devno + 3, NULL, 16);
+        return true;
+    }
+    return false;
+}
 bool elf_hooker::phrase_proc_maps()
 {
+    log_info("phrase_proc_maps() -->\n");
     m_modules.clear();
     FILE* fd = fopen("/proc/self/maps", "r");
     if (fd != NULL)
@@ -52,17 +64,39 @@ bool elf_hooker::phrase_proc_maps()
         {
             const char *sep = "\t \r\n";
             char *line = NULL;
+            log_info("line: %s\n", buff);
             char* addr = strtok_r(buff, sep, &line);
             if (!addr) {
                 continue;
             }
+
             char *flags = strtok_r(NULL, sep, &line);
-            if (!flags || flags[0] != 'r') {
-                // mem section cound NOT be read..
+            if (!flags || flags[0] != 'r' || flags[3] == 's') {
+                //
+                /*
+                    1. mem section cound NOT be read, without 'r' flag.
+                    2. read from base addr of /dev/mail module would crash.
+                       i dont know how to handle it, just skip it.
+
+                       1f5573000-1f58f7000 rw-s 1f5573000 00:0c 6287 /dev/mali0
+
+                */
                 continue;
             }
             strtok_r(NULL, sep, &line);  // offsets
-            strtok_r(NULL, sep, &line);  // dev
+            char *dev = strtok_r(NULL, sep, &line);  // dev number.
+            int major = 0, minor = 0;
+            if (!phrase_dev_num(dev, &major, &minor) || major == 0) {
+                /*
+                    if dev major number equal to 0, mean the module must NOT be
+                    a shared or executable object loaded from disk.
+                    e.g:
+                    lookup symbol from [vdso] would crash.
+                    7f7b48a000-7f7b48c000 r-xp 00000000 00:00 0  [vdso]
+                */
+                continue;
+            }
+
             strtok_r(NULL, sep, &line);  // node
 
             char* filename = strtok_r(NULL, sep, &line); //module name
@@ -77,7 +111,7 @@ bool elf_hooker::phrase_proc_maps()
                 void* end_addr = NULL;
                 if (phrase_proc_base_addr(addr, &base_addr, &end_addr) && elf_module::is_elf_module(base_addr))
                 {
-//                    log_info("insert module: %p, %s\n", base_addr, module_name.c_str());
+                    log_info("insert module: %p, %s\n", base_addr, module_name.c_str());
                     elf_module module(reinterpret_cast<ElfW(Addr)>
                     (base_addr), module_name.c_str());
                     m_modules.insert(std::pair<std::string, elf_module>(module_name, module));

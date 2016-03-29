@@ -91,7 +91,7 @@ static int __set_hook(JNIEnv *env, jobject thiz)
     log_info("__set_hook() -->\r\n");
 //    __hooker.set_prehook_cb(__prehook);
     __hooker.phrase_proc_maps();
-//    __hooker.dump_module_list();
+    __hooker.dump_module_list();
     __hooker.hook_all_modules("dlopen", (void*)__nativehook_impl_dlopen, (void**)&__old_impl_dlopen);
     __hooker.hook_all_modules("connect", (void*)__nativehook_impl_connect, (void**)&__old_impl_connect);
 

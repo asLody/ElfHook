@@ -34,9 +34,29 @@
 
 #if defined(__LP64__)
 #define ElfW(type) Elf64_ ## type
+static inline ElfW(Word) elf_r_sym(ElfW(Xword) info) { return ELF64_R_SYM(info); }
+static inline ElfW(Xword) elf_r_type(ElfW(Xword) info) { return ELF64_R_TYPE(info); }
 #else
 #define ElfW(type) Elf32_ ## type
+static inline ElfW(Word) elf_r_sym(ElfW(Word) info) { return ELF32_R_SYM(info); }
+static inline ElfW(Word) elf_r_type(ElfW(Word) info) { return ELF32_R_TYPE(info); }
 #endif
+
+#if defined(__arm__)
+#define R_GENERIC_JUMP_SLOT R_ARM_JUMP_SLOT
+#define R_GENERIC_GLOB_DAT  R_ARM_GLOB_DAT
+#define R_GENERIC_RELATIVE  R_ARM_RELATIVE
+#define R_GENERIC_IRELATIVE R_ARM_IRELATIVE
+#define R_GENERIC_ABS       R_ARM_ABS32
+#elif defined(__aarch64__)
+#define R_GENERIC_JUMP_SLOT R_AARCH64_JUMP_SLOT
+#define R_GENERIC_GLOB_DAT  R_AARCH64_GLOB_DAT
+#define R_GENERIC_RELATIVE  R_AARCH64_RELATIVE
+#define R_GENERIC_IRELATIVE R_AARCH64_IRELATIVE
+#define R_GENERIC_ABS       R_AARCH64_ABS64
+#endif
+
+
 
 
 #define powerof2(x)     ((((x)-1)&(x))==0)

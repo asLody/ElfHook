@@ -17,9 +17,9 @@
 #define DT_ANDROID_REL   ((int)0x6000000f)
 #define DT_ANDROID_RELSZ ((int)0x60000010)
 
-#define R_ARM_ABS32      (0x02)
-#define R_ARM_GLOB_DAT   (0x15)
-#define R_ARM_JUMP_SLOT  (0x16)
+// #define R_ARM_ABS32      (0x02)
+// #define R_ARM_GLOB_DAT   (0x15)
+// #define R_ARM_JUMP_SLOT  (0x16)
 
 
 #define PAGE_START(addr) (~(getpagesize() - 1) & (addr))
@@ -69,7 +69,6 @@ elf_module::~elf_module()
 bool elf_module::is_elf_module(void* base_addr)
 {
     ElfW(Ehdr) *ehdr = reinterpret_cast<ElfW(Ehdr) *>(base_addr);
-
     if (memcmp(ehdr->e_ident, ELFMAG, SELFMAG) != 0) {
         return false;
     }
@@ -453,7 +452,7 @@ bool elf_module::hook(const char *symbol, void *replace_func, void **old_func)
     for (uint32_t i = 0; i < this->m_relplt_size; i++)
     {
         ElfW(Rel)& rel = this->m_relplt_ptr[i];
-        if (ELF32_R_SYM(rel.r_info) == symidx && ELF32_R_TYPE(rel.r_info) == R_ARM_JUMP_SLOT)
+        if (elf_r_sym(rel.r_info) == symidx && elf_r_type(rel.r_info) == R_GENERIC_JUMP_SLOT)
         {
 
             void *addr = (void *) (this->get_bias_addr() + rel.r_offset);
@@ -468,9 +467,9 @@ bool elf_module::hook(const char *symbol, void *replace_func, void **old_func)
     for (uint32_t i = 0; i < this->m_reldyn_size; i++)
     {
         ElfW(Rel)& rel = this->m_reldyn_ptr[i];
-        if (ELF32_R_SYM(rel.r_info) == symidx &&
-                (ELF32_R_TYPE(rel.r_info) == R_ARM_ABS32
-                        || ELF32_R_TYPE(rel.r_info) == R_ARM_GLOB_DAT))
+        if (elf_r_sym(rel.r_info) == symidx &&
+                (elf_r_type(rel.r_info) == R_GENERIC_ABS
+                        || elf_r_type(rel.r_info) == R_GENERIC_GLOB_DAT))
         {
 
             void *addr = (void *) (this->get_bias_addr() + rel.r_offset);

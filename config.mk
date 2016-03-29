@@ -26,6 +26,6 @@ LDFLAGS      += $(STL_PORT)/libs/armeabi-v7a/libstlport_static.a
 LDFLAGS      += -fPIE -pie -lstdc++
 JNIFLAGS     = APP_BUILD_SCRIPT=./Android.mk
 JNIFLAGS     += APP_ABI=arm64-v8a,armeabi-v7a
-JNIFLAGS     += APP_PLATFORM=android-19
+JNIFLAGS     += APP_PLATFORM=android-23
 JNIFLAGS     += APP_STL=stlport_static
 EXTRA_OBJS   +=
