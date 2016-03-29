@@ -3,16 +3,17 @@
 &emsp;&emsp;这份ElfHook的代码参考boyliang的AllHookInOne, 修复AllHookInOne的
 ElfHook中的一些问题，同时也解决我们项目中遇到的一些问题。
 
-- .dynmaic中不使用DT_HAST，而是使用.gun.hash。
+- **NOT** DT_HAST in .dynmaic section，but .gun.hash instead.
 
-- .dynmaic中没有DT_REL和DT_RELSZ, 而实用DT_ANDROID_REL和DT_ANDROID_RELSZ。
+- **NOT** DT_REL and DT_RELSZ in .dynmaic section, but DT_ANDROID_REL and DT_ANDROID_RELSZ instead.
 
 - 计算动态库加载的base_addr是错误的，应该使用bias_addr来计算出ehdr、phdr和shdr之外的所有地址。
 
 - 替换函数时，修改page的读写权限时，在SEAndroid上PROT_EXEC和PROT_WRITE同时设置**可能**会导致异常，
 
-- hook "dlopen" 函数，在新的dlopen再去hook新加载的动态库时如何得到新动态库的base_addr
+- after hook "dlopen" function, how to get base_addr from return value of old dlopen in new dlopen function.
 
+- support aarch64 (arm64-v8a)
 
 ref:
 
@@ -38,8 +39,7 @@ ref:
 
 #### or
 
-> ndk-build NDK_PROJECT_PATH=. NDK_OUT=./objs NDK_LIBS_OUT=./bin APP_BUILD_SCRIPT=./Android.mk APP_PLATFORM=android-19 APP_STL=stlport_static
-
+> ndk-build NDK_PROJECT_PATH=. NDK_OUT=./objs NDK_LIBS_OUT=./bin APP_BUILD_SCRIPT=./Android.mk APP_PLATFORM=android-23 APP_ABI=arm64-v8a,armeabi-v7a APP_STL=stlport_static
 
 ## 0x03 How To Use
 
