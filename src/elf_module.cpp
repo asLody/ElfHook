@@ -305,6 +305,9 @@ bool elf_module::elf_lookup(char const* symbol, ElfW(Sym) **sym, int *symidx)
 {
     ElfW(Sym) *target = NULL;
 
+    if (!this->m_bucket || !this-> m_chain) {
+        return false;
+    }
     uint32_t hash = elf_hash(symbol);
     uint32_t index = this->m_bucket[hash % this->m_nbucket];
 
@@ -333,6 +336,10 @@ bool elf_module::gnu_lookup(char const* symbol, ElfW(Sym) **sym, int *symidx)
 {
     uint32_t hash = this->gnu_hash(symbol);
     uint32_t h2 = hash >> this->m_gnu_shift2;
+
+    if (!this->m_gnu_bloom_filter || !this->m_gnu_bucket || !this->m_gnu_chain) {
+        return false;
+    }
 
     uint32_t bloom_mask_bits = sizeof(ElfW(Addr))*8;
     uint32_t word_num = (hash / bloom_mask_bits) & this->m_gnu_maskwords;
@@ -399,6 +406,11 @@ bool elf_module::gnu_lookup(char const* symbol, ElfW(Sym) **sym, int *symidx)
 
 bool elf_module::find_symbol_by_name(const char *symbol, ElfW(Sym) **sym, int *symidx)
 {
+    if (!this->m_symstr_ptr || !this->m_sym_ptr) {
+        log_warn("NOT symstr or symtab..\n");
+        return false;
+    }
+
     if (this->m_is_gnu_hash) {
         bool result = gnu_lookup(symbol, sym, symidx);
         if (!result) {
