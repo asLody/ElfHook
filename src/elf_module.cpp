@@ -233,7 +233,6 @@ void elf_module::get_section_info(const char *name, ElfW(Shdr) **ppShdr, ElfW(Wo
         SAFE_SET_VALUE(data, reinterpret_cast<T>(this->get_bias_addr() + _shdr->sh_offset));
     }else{
         log_error("[-] Could not found section %s\n", name);
-        exit(-1);
     }
 
     SAFE_SET_VALUE(ppShdr, _shdr);
@@ -249,7 +248,6 @@ void elf_module::get_segment_info(const ElfW(Word) type, ElfW(Phdr) **ppPhdr, El
         SAFE_SET_VALUE(pSize, _phdr->p_memsz);
     }else{
         log_error("[-] Could not found segment type is %d\n", type);
-        exit(-1);
     }
     SAFE_SET_VALUE(ppPhdr, _phdr);
 }
