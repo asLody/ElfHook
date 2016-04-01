@@ -19,6 +19,9 @@ public:
     inline ElfW(Addr) get_bias_addr() { return this->m_bias_addr; }
     inline bool get_is_gnu_hash() { return this->m_is_gnu_hash; }
     inline void set_is_gnu_has(bool flag) { this->m_is_gnu_hash = flag; }
+    inline bool get_is_use_rela() { return this->m_is_use_rela; }
+    inline void set_is_use_rela(bool flag) { this->m_is_use_rela = flag; }
+
     bool hook(const char *symbol, void *replace_func, void **old_func);
 
     void dump_elf_header(void);
@@ -28,6 +31,7 @@ public:
     void dump_dynamics();
     void dump_symbols();
     void dump_rel_info();
+    void dump_rela_info();
 
 protected:
 
@@ -56,8 +60,6 @@ protected:
     addr, int prots);
     bool replace_function(void *addr, void *replace_func, void **old_func);
 
-
-
     const char* convert_dynamic_tag_to_name(int d_tag);
 
 protected:
@@ -78,10 +80,11 @@ protected:
     ElfW(Sym)    *m_sym_ptr;
     ElfW(Word)   m_sym_size;
 
-    ElfW(Rel)   *m_relplt_ptr;
-    ElfW(Rel)   *m_reldyn_ptr;
-    ElfW(Word)  m_relplt_size;
-    ElfW(Word)  m_reldyn_size;
+    ElfW(Addr)   m_relplt_addr;
+    ElfW(Addr)   m_reldyn_addr;
+
+    ElfW(Word)  m_relplt_bytes;
+    ElfW(Word)  m_reldyn_bytes;
 
 protected:
     //for elf hash
@@ -100,6 +103,7 @@ protected:
     ElfW(Addr) *m_gnu_bloom_filter;
 
     bool m_is_gnu_hash;
+    bool m_is_use_rela;
 
 protected:
 

@@ -19,7 +19,8 @@ LOCAL_SHARED_LIBRARIES := stdc++
 
 LOCAL_CFLAGS := \
                 -Wno-write-strings \
-                -DHAVE_LITTLE_ENDIAN
+                -DHAVE_LITTLE_ENDIAN \
+                -Werror
 
 include $(BUILD_STATIC_LIBRARY)
 

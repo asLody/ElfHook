@@ -30,7 +30,7 @@ public:
     }
 
     void hook_all_modules(const char* func_name, void* pfn_new, void** ppfn_old);
-
+    void dump_proc_maps();
 protected:
 
     bool phrase_proc_base_addr(char* addr, void** pbase_addr, void** pend_addr);

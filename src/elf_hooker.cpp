@@ -52,6 +52,7 @@ bool elf_hooker::phrase_dev_num(char* devno, int *pmajor, int *pminor)
     }
     return false;
 }
+
 bool elf_hooker::phrase_proc_maps()
 {
     log_info("phrase_proc_maps() -->\n");
@@ -64,7 +65,6 @@ bool elf_hooker::phrase_proc_maps()
         {
             const char *sep = "\t \r\n";
             char *line = NULL;
-            log_info("line: %s\n", buff);
             char* addr = strtok_r(buff, sep, &line);
             if (!addr) {
                 continue;
@@ -111,13 +111,13 @@ bool elf_hooker::phrase_proc_maps()
                 void* end_addr = NULL;
                 if (phrase_proc_base_addr(addr, &base_addr, &end_addr) && elf_module::is_elf_module(base_addr))
                 {
-                    log_info("insert module: %p, %s\n", base_addr, module_name.c_str());
                     elf_module module(reinterpret_cast<ElfW(Addr)>
                     (base_addr), module_name.c_str());
                     m_modules.insert(std::pair<std::string, elf_module>(module_name, module));
                 }
             }
         }
+        fclose(fd);
         return 0;
     }
     return -1;
@@ -150,7 +150,20 @@ void elf_hooker::hook_all_modules(const char* func_name, void* pfn_new, void** p
     return;
 }
 
-
+void elf_hooker::dump_proc_maps()
+{
+    FILE* fd = fopen("/proc/self/maps", "r");
+    if (fd > 0)
+    {
+        char buff[2048+1];
+        while(fgets(buff, 2048, fd) != NULL)
+        {
+            log_info("%s\n", buff);
+        }
+        fclose(fd);
+    }
+    return;
+}
 // void* elf_hooker::caculate_base_addr_from_soinfo_pointer(void* soinfo_addr)
 // {
 //     uint32_t
