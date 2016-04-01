@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">TestHook</string>
+    <string name="button3_title">WebView</string>
+    <string name="button2_title">Vitamio</string>
+    <string name="button1_title">HttpClient</string>
+    <string name="button_load">加载</string>
+    <string name="button_goback">后退</string>
+    <string name="button_goforward">前进</string>
+    <string name="button_hook">HOOK</string>
+</resources>
