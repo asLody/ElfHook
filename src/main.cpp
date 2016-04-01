@@ -12,11 +12,13 @@ static void* (*__old_impl_dlopen)(const char* filename, int flag);
 
 static int (*__old_impl_connect)(int sockfd,struct sockaddr * serv_addr,int addrlen);
 
+static void* (*__old_impl_android_dlopen_ext)(const char* filename, int flags, const void* extinfo);
+
 extern "C" {
 
     static void* __nativehook_impl_dlopen(const char* filename, int flag)
     {
-        log_info("__nativehook_impl_dlopen ->\n");
+        log_info("__nativehook_impl_dlopen -> (%s)\n", filename);
         void* res = __old_impl_dlopen(filename, flag);
         return res;
     }
@@ -28,14 +30,18 @@ extern "C" {
         return res;
     }
 
+    static void* __nativehook_impl_android_dlopen_ext(const char* filename, int flags, const void* extinfo)
+    {
+        log_info("__nativehook_impl_android_dlopen_ext -> (%s)\n", filename);
+        void* res = __old_impl_android_dlopen_ext(filename, flags, extinfo);
+        return res;
+    }
+
 }
 
 static bool __prehook(const char* module_name, const char* func_name)
 {
-
-    //if (strncmp(module_name, moduleName, strlen(moduleName)) == 0)
-    if (strstr(module_name, "base.odex") != NULL ||
-        strstr(module_name, "boot.oat") != NULL)
+    if (strstr(module_name, "libwebviewchromium.so") != NULL)
     {
        return true;
     }
@@ -84,6 +90,7 @@ static void __elfhooker_deinit(void);
 static JNINativeMethod __methods[] =
 {
     {"setHook","()I",(void *)__set_hook },
+//    {"test","()I",(void *)__test },
 };
 
 static int __set_hook(JNIEnv *env, jobject thiz)
@@ -94,13 +101,24 @@ static int __set_hook(JNIEnv *env, jobject thiz)
     __hooker.dump_module_list();
     __hooker.hook_all_modules("dlopen", (void*)__nativehook_impl_dlopen, (void**)&__old_impl_dlopen);
     __hooker.hook_all_modules("connect", (void*)__nativehook_impl_connect, (void**)&__old_impl_connect);
+    __hooker.hook_all_modules("android_dlopen_ext", (void*)__nativehook_impl_android_dlopen_ext, (void**)&__old_impl_android_dlopen_ext);
 
+#if 0
+    void* h = dlopen("libart.so", RTLD_LAZY);
+    if (h != NULL) {
+        void* f = dlsym(h,"artAllocObjectFromCodeResolvedRegion");
+        log_info("artAllocObjectFromCodeResolvedRegion : %p\n", f);
+    } else {
+        log_error("open libart.so fail\n");
+    }
+#endif
     return 0;
 }
 
 static int __test(JNIEnv *env, jobject thiz)
 {
     log_info("__test() -->\r\n");
+//    __hooker.dump_proc_maps();
     return 0;
 }
 
@@ -152,7 +170,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved)
     JNIEnv* env = NULL;
     bool attached;
     __java_vm = vm;
-    log_info("JNI_OnLoad() -->");
+
     if ((env = __getEnv(&__is_attached)) == NULL)
     {
         log_error("getEnv fail\r\n");
