@@ -33,9 +33,11 @@ ref:
 
 #### Build
 
-> make jni
+> make
 
-> make jni-clean
+> make clean
+
+> make install  # copy libElfHook.so to jniLibs dir in Demo. 
 
 #### or
 

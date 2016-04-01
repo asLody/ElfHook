@@ -10,7 +10,7 @@ JNIFLAGS     += APP_ABI=arm64-v8a,armeabi-v7a
 JNIFLAGS     += APP_PLATFORM=android-23
 JNIFLAGS     += APP_STL=stlport_static
 
-JNILIBPATH   = /Users/wuxin/AndroidStudioProjects/TestHook/app/src/main/jniLibs
+JNILIBPATH   = ./Demo/app/src/main/jniLibs
 
 
 all:
