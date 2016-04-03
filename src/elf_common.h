@@ -1,7 +1,7 @@
 #if !defined (__ELF_COMMON_H__)
 #define __ELF_COMMON_H__
 
-#include <elf.h>
+#include "elf.h"
 
 #include <stdio.h>
 #include <stdlib.h>
