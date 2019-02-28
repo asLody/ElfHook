@@ -90,7 +90,7 @@ static void __elfhooker_deinit(void);
 static JNINativeMethod __methods[] =
 {
     {"setHook","()I",(void *)__set_hook },
-//    {"test","()I",(void *)__test },
+    {"test","()I",(void *)__test },
 };
 
 static int __set_hook(JNIEnv *env, jobject thiz)
@@ -118,7 +118,7 @@ static int __set_hook(JNIEnv *env, jobject thiz)
 static int __test(JNIEnv *env, jobject thiz)
 {
     log_info("__test() -->\r\n");
-//    __hooker.dump_proc_maps();
+    __hooker.dump_proc_maps();
     return 0;
 }
 
