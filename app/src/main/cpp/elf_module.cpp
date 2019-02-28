@@ -13,9 +13,9 @@
 #include "elf_common.h"
 #include "elf_module.h"
 
-#define DT_GNU_HASH      ((int)0x6ffffef5)
-#define DT_ANDROID_REL   ((int)0x6000000f)
-#define DT_ANDROID_RELSZ ((int)0x60000010)
+//#define DT_GNU_HASH      ((int)0x6ffffef5)
+//#define DT_ANDROID_REL   ((int)0x6000000f)
+//#define DT_ANDROID_RELSZ ((int)0x60000010)
 
 // #define R_ARM_ABS32      (0x02)
 // #define R_ARM_GLOB_DAT   (0x15)
@@ -226,7 +226,7 @@ bool elf_module::get_segment_view(void)
 template<class T>
 void elf_module::get_section_info(const char *name, ElfW(Shdr) **ppShdr, ElfW(Word) *pSize, T *data)
 {
-    Elf32_Shdr *_shdr = this->find_section_by_name(name);
+    ElfW(Shdr) *_shdr = this->find_section_by_name(name);
 
     if(_shdr){
         SAFE_SET_VALUE(pSize, _shdr->sh_size / _shdr->sh_entsize);
@@ -778,7 +778,7 @@ void elf_module::dump_symbols(void)
 void elf_module::dump_rel_info(void)
 {
     ElfW(Rel)* rels[] = {reinterpret_cast<ElfW(Rel) *>(this->m_reldyn_addr), reinterpret_cast<ElfW(Rel) *>(this->m_relplt_addr)};
-    ElfW(Word) resszs[] = {this->m_reldyn_bytes/sizeof(ElfW(Rel)), this->m_relplt_bytes/sizeof(ElfW(Rel))};
+    ElfW(Word) resszs[] = {ElfW(Word)(this->m_reldyn_bytes/sizeof(ElfW(Rel))), ElfW(Word)(this->m_relplt_bytes/sizeof(ElfW(Rel)))};
 
     ElfW(Sym) *sym = this->m_sym_ptr;
 
@@ -804,7 +804,7 @@ void elf_module::dump_rel_info(void)
 void elf_module::dump_rela_info(void)
 {
     ElfW(Rela)* relas[] = {reinterpret_cast<ElfW(Rela) *>(this->m_reldyn_addr), reinterpret_cast<ElfW(Rela) *>(this->m_relplt_addr)};
-    ElfW(Word) resszs[] = {this->m_reldyn_bytes/sizeof(ElfW(Rela)), this->m_relplt_bytes/sizeof(ElfW(Rela))};
+    ElfW(Word) resszs[] = {ElfW(Word)(this->m_reldyn_bytes/sizeof(ElfW(Rela))), ElfW(Word)(this->m_relplt_bytes/sizeof(ElfW(Rela)))};
 
     ElfW(Sym) *sym = this->m_sym_ptr;
 

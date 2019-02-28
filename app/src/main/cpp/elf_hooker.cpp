@@ -153,7 +153,7 @@ void elf_hooker::hook_all_modules(const char* func_name, void* pfn_new, void** p
 void elf_hooker::dump_proc_maps()
 {
     FILE* fd = fopen("/proc/self/maps", "r");
-    if (fd > 0)
+    if (fd != NULL)
     {
         char buff[2048+1];
         while(fgets(buff, 2048, fd) != NULL)
