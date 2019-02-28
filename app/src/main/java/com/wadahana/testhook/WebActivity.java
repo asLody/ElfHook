@@ -13,23 +13,24 @@ import android.widget.Button;
 /**
  * Created by wuxin on 3/10/16.
  */
-public class WebActivity extends AppCompatActivity implements View.OnClickListener  {
-    private Button  mLoadButton;
-    private Button  mGobackButton;
-    private Button  mGoforwardButton;
-    private Button  mHookButton;
+public class WebActivity extends AppCompatActivity implements View.OnClickListener {
+    private Button mLoadButton;
+    private Button mGobackButton;
+    private Button mGoforwardButton;
+    private Button mHookButton;
     private WebView mWebView;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_web);
 
-        mLoadButton         = (Button)this.findViewById(R.id.button_load);
-        mGobackButton       = (Button)this.findViewById(R.id.button_goback);
-        mGoforwardButton    = (Button)this.findViewById(R.id.button_goforward);
-        mHookButton         = (Button)this.findViewById(R.id.button_hook);
+        mLoadButton = (Button) this.findViewById(R.id.button_load);
+        mGobackButton = (Button) this.findViewById(R.id.button_goback);
+        mGoforwardButton = (Button) this.findViewById(R.id.button_goforward);
+        mHookButton = (Button) this.findViewById(R.id.button_hook);
 
-        mWebView            = (WebView) findViewById(R.id.webView);
+        mWebView = (WebView) findViewById(R.id.webView);
 
         mLoadButton.setOnClickListener(this);
         mGobackButton.setOnClickListener(this);
@@ -78,17 +79,17 @@ public class WebActivity extends AppCompatActivity implements View.OnClickListen
 
     @Override
     public void onClick(View v) {
-        if(v == (View)mLoadButton) {
+        if (v == (View) mLoadButton) {
             System.out.printf("加载 按钮\n");
             mWebView.loadUrl("http://www.baidu.com");
             mWebView.requestFocus();
-        } else if (v == (View)mGobackButton) {
+        } else if (v == (View) mGobackButton) {
             System.out.printf("后退 按钮\n");
             mWebView.goBack();
-        } else if (v == (View)mGoforwardButton) {
+        } else if (v == (View) mGoforwardButton) {
             System.out.printf("前进 按钮\n");
             mWebView.goForward();
-        } else if (v == (View)mHookButton) {
+        } else if (v == (View) mHookButton) {
             ElfHooker hooker = new ElfHooker();
             hooker.setHook();
         }

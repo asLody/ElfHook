@@ -34,8 +34,11 @@
 
 #if defined(__LP64__)
 #define ElfW(type) Elf64_ ## type
+
 static inline ElfW(Word) elf_r_sym(ElfW(Xword) info) { return ELF64_R_SYM(info); }
+
 static inline ElfW(Xword) elf_r_type(ElfW(Xword) info) { return ELF64_R_TYPE(info); }
+
 #else
 #define ElfW(type) Elf32_ ## type
 static inline ElfW(Word) elf_r_sym(ElfW(Word) info) { return ELF32_R_SYM(info); }
@@ -57,13 +60,10 @@ static inline ElfW(Word) elf_r_type(ElfW(Word) info) { return ELF32_R_TYPE(info)
 #endif
 
 
-
-
 #define powerof2(x)     ((((x)-1)&(x))==0)
 #define SOINFO_NAME_LEN (128)
 
-inline static int GetTargetElfMachine()
-{
+inline static int GetTargetElfMachine() {
 #if defined(__arm__)
     return EM_ARM;
 #elif defined(__aarch64__)

@@ -1,14 +1,13 @@
 package com.wadahana.testhook;
 
 import android.util.Log;
+
 /**
  * Created by wuxin on 3/24/16.
  */
 public class ElfHooker {
     private static final String TAG = "ElfHooker";
     private static boolean isLoadLibrary;
-    public native int setHook();
-    public native int test();
 
     static {
         try {
@@ -22,5 +21,9 @@ public class ElfHooker {
             Log.d(TAG, "Failed to load library ElfHook: " + e.getMessage());
         }
     }
+
+    public native int setHook();
+
+    public native int test();
 
 }
